@@ -69,6 +69,46 @@ fn read_ebc_file_bool(parameter: &str) -> bool {
     return out;
 }
 
+/* if the target file does not exist, return false */
+fn read_ebc_file_bool_falseonfail(parameter: &str) -> bool {
+    let parameter_file = format!(
+        "/sys/module/rockchip_ebc/parameters/{parameter}"
+    );
+    let file_exists = std::path::Path::new(&parameter_file).exists();
+
+    if file_exists
+    {
+        let file = OpenOptions::new().read(true)
+            .open(parameter_file).expect(
+                format!("Error opening EBC module parameter: {}", parameter).as_str()
+            );
+        let mut reader = BufReader::new(file);
+        let mut buf = String::new();
+        reader.read_line(&mut buf).unwrap();
+
+        let out = match buf.trim() {
+            "Y" => true,
+            "N" => false,
+            "1" => true,
+            "0" => false,
+            _ => panic!("Unexpected value in sysfs file, expected 'Y' or 'N'"),
+        };
+        return out;
+    } else {
+        return false
+    }
+}
+
+
+fn write_ebc_file_onfaildonothing(parameter : &str, new_value : u8) {
+    let device_path = format!("/sys/module/rockchip_ebc/parameters/{parameter}");
+    let file_exists = std::path::Path::new(&device_path).exists();
+    if file_exists {
+        write_ebc_file(parameter, new_value);
+    }
+}
+
+
 fn write_ebc_file(parameter : &str, new_value : u8) {
     let device = format!("/sys/module/rockchip_ebc/parameters/{parameter}");
     println!("Writing to {device}: {new_value}");
@@ -176,13 +216,15 @@ pub fn set_dclk_select(new_mode: u8){
 }
 
 pub fn get_globre_convert_before() -> bool {
-    let value = read_ebc_file_bool("globre_convert_before");
+    // this is a new addition to the custom kernel, expect the parameter to not
+    // exist and just return false
+    let value = read_ebc_file_bool_falseonfail("globre_convert_before");
     value
 }
 
 pub fn set_globre_convert_before(new_mode: bool){
     // todo: allowed values: 0, 1
-    write_ebc_file("globre_convert_before", new_mode as u8);
+    write_ebc_file_onfaildonothing("globre_convert_before", new_mode as u8);
 }
 
 /*
