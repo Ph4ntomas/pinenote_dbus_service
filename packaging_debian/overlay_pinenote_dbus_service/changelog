@@ -1,6 +1,11 @@
 rust-pinenote-dbus-service (0.2.5) trixie; urgency=medium
 
-  *
+  * add ebc methods: GetGlobreConvertBefore,SetGlobreConvertBefore and
+    corresponding signal
+  * fail gracefully of the ebc parameter 'globre_convert_before' does not
+    exist. This is a niche addition to one of the custom PineNote kernels and
+    only deals with minor graphical glitches.  Therefore, it's ok to just keep
+    going if it does not exist
 
  -- Maximilian Weigand (PineNote Signing Key 4) <mweigand@mweigand.net>  Sun, 16 Feb 2025 11:25:05 +0200
 
