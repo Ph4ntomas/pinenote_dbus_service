@@ -17,6 +17,10 @@
  * */
 use dbus::blocking::Connection;
 use dbus_crossroads::{Crossroads, Context};
+use pinenote_dbus_service::interfaces::ebc::EbcContext;
+use pinenote_dbus_service::interfaces::ebc::ServiceContext;
+use pinenote_dbus_service::ebc_ioctl;
+use pinenote_dbus_service::sys_handler;
 use std::error::Error;
 use std::sync::Mutex;
 use std::fs::File;
@@ -24,8 +28,8 @@ use std::io::Read;
 use std::io::ErrorKind;
 
 
-mod ebc_ioctl;
-mod sys_handler;
+//mod ebc_ioctl;
+//mod sys_handler;
 mod usb_modes;
 
 // WritingState
@@ -130,6 +134,8 @@ fn pen_get_battery() -> String {
 fn main() -> Result<(), Box<dyn Error>> {
     // Let's start by starting up a connection to the session bus and request a name.
     let c = Connection::new_system()?;
+
+    // Kept for backward compatibility reason
     c.request_name("org.pinenote.ebc", false, true, false)?;
     c.request_name("org.pinenote.pen", false, true, false)?;
     c.request_name("org.pinenote.usb", false, true, false)?;
@@ -881,6 +887,14 @@ fn main() -> Result<(), Box<dyn Error>> {
     cr.insert("/pen", &[iface_token2], EbcObject{});
     cr.insert("/usb", &[iface_token3], EbcObject{});
     cr.insert("/misc", &[iface_token4], EbcObject{});
+
+
+    let base_path = "/org/pinenote/Controller";
+    c.request_name("org.pinenote.service", false, true, false)?;
+
+    cr.set_add_standard_ifaces(true);
+    let v1_ebc = cr.register("org.pinenote.experimental.Ebc1", EbcContext::build_v1);
+    cr.insert(format!("{base_path}/experimental"), &[v1_ebc], ServiceContext::default());
 
     // Serve clients forever.
     println!("Starting PineNote DBUS service");

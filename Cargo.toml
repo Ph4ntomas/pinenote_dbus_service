@@ -27,6 +27,7 @@ dbus = ">=0.9.6"
 dbus-crossroads = ">=0.5.1"
 libc = "0.2.137"
 nix = { version = ">=0.27.0", features=["ioctl"] }
+num_enum = ">=0.7.3"
 
 # for Debian packaging (cargo deb -v)
 [package.metadata.deb]
