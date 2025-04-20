@@ -25,76 +25,207 @@ enum Waveform {
     MAX
 }
 
-#[derive(Default)]
-pub struct EbcContext {}
-
-#[derive(Default)]
-pub struct ServiceContext{
-    pub ebc_context: EbcContext
+#[derive(TryFromPrimitive)]
+#[repr(u8)]
+enum BwMode {
+    Gray16,
+    BWDither,
+    BWTheshold,
+    Gray4
 }
 
-impl EbcContext {
-    pub fn build_v1(builder: &mut IfaceBuilder<ServiceContext>) {
-        let _auto_refresh_changed = builder.signal::<( ), _>("AutoRefreshChanged", ()).msg_fn();
-        let _bw_mode_changed = builder.signal::<( ), _>("BwModeChanged", ()).msg_fn();
+#[derive(Default)]
+pub struct EbcState {}
+
+#[derive(Default)]
+pub struct State {
+    pub ebc: EbcState
+}
+
+impl EbcState {
+    pub fn build_v1(builder: &mut IfaceBuilder<State>) {
         let _bw_dither_invert_changed = builder.signal::<( ), _>("BwDitherInvertChanged", ()).msg_fn();
         let _dclk_select_changed = builder.signal::<( ), _>("DclkSelectChanged", ()).msg_fn();
-        let _waveform_changed = builder.signal::<( ), _>("WaveformChanged", ()).msg_fn();
         let _no_off_screen_changed = builder.signal::<( ), _>("NoOffScreenChanged", ()).msg_fn();
         let _requested_quality_or_performance_mode = builder.signal::<(u8, ), _>("RequestedQualityOrPerformance", ("requested_mode", )).msg_fn();
         let _delay_a_changed = builder.signal::<( ), _>("DelayAChanged", ()).msg_fn();
         let _globre_convert_before_changed = builder.signal::<( ), _>("GlobreConvertBeforeChanged", ()).msg_fn();
 
-        //let default_waveform_changed = builder.property("DefaultWaveform").changed_msg_fn();
-
-        builder.property("default_waveform")
-            .get(|_, svc_ctx| { svc_ctx.ebc_context.get_default_waveform() })
-            .set(|_, svc_ctx, value| { svc_ctx.ebc_context.set_default_waveform(value) })
-            .deprecated();
-
-        builder.property("DefaultWaveform")
+        let prop_autorefresh_changed = builder.property("AutoRefresh")
             .emits_changed_true()
-            .get(|_, svc_ctx| { svc_ctx.ebc_context.get_default_waveform() })
-            .set(|_, svc_ctx, value| {
-                svc_ctx.ebc_context.set_default_waveform(value)
+            .get(|_, state| { state.ebc.get_auto_refresh() })
+            .set(|_, state, value| { state.ebc.set_auto_refresh(value) })
+            .changed_msg_fn();
+        let auto_refresh_changed = builder.signal::<( ), _>("AutoRefreshChanged", ()).msg_fn();
+
+        builder.method("GetAutoRefresh",
+            (), ( "state_auto_refresh", ),
+            move | _, state, () | {
+                state.ebc.get_auto_refresh().map(|v| { (v, ) })
+            }).deprecated();
+
+        builder.method("GetAutorefresh",
+            (), ( "state_auto_refresh", ),
+            move | _, state, () | {
+                state.ebc.get_auto_refresh().map(|v| { (v, ) })
+            }).deprecated();
+
+        builder.method("SetAutoRefresh",
+            ("state_auto_refresh", ), (),
+            move | ctx, state, (val,) | {
+                let _r = state.ebc.set_auto_refresh(val)?;
+                let msg = auto_refresh_changed(ctx.path(), &());
+                ctx.push_msg(msg);
+
+                prop_autorefresh_changed(ctx.path(), &val).map(|msg| ctx.push_msg(msg));
+
+                Ok(())
             });
 
-        builder.method("TriggerGlobalRefresh",
-            (), // In args
-            (), // Out args
-            move |_, svc_ctx, ()| { svc_ctx.ebc_context.trigger_global_refresh() }
+        let prop_bw_mode_changed = builder.property("BwMode")
+            .emits_changed_true()
+            .get(|_, state| { state.ebc.get_bw_mode() })
+            .set(|_, state, value| { state.ebc.set_bw_mode(value) })
+            .changed_msg_fn();
+        let bw_mode_changed = builder.signal::<(), _>("BwModeChanged", ()).msg_fn();
+
+        builder.method("GetBwMode",
+            (), ( "current_mode", ),
+            move | _, state, () | {
+                state.ebc.get_bw_mode().map(|v| { (v,) })
+            }).deprecated();
+
+        builder.method("SetBwMode",
+            ("new_mode",), (),
+            move | ctx, state, ( value, ) | {
+                let r = state.ebc.set_bw_mode(value)?;
+                let msg = bw_mode_changed(ctx.path(), &());
+                ctx.push_msg(msg);
+
+                prop_bw_mode_changed(ctx.path(), &value).map(|msg| ctx.push_msg(msg));
+                Ok(())
+            });
+
+        // DefaultWaveform
+        let waveform_changed = builder.signal::<(), _>("WaveformChanged", ()).msg_fn();
+        let prop_wf_changed = builder.property("DefaultWaveform")
+            .emits_changed_true()
+            .get(|_, state| { state.ebc.get_default_waveform() })
+            .set(|_, state, value| { state.ebc.set_default_waveform(value) })
+            .changed_msg_fn();
+
+        builder.property("default_waveform")
+            .get(|_, state| { state.ebc.get_default_waveform() })
+            .set(|_, state, value| { state.ebc.set_default_waveform(value) })
+            .deprecated();
+
+        builder.method("GetDefaultWaveform",
+            (), ("current_waveform", ),
+            move |_, state, ()| {
+                state.ebc.get_default_waveform().map(|v| { (v, ) })
+            }
+            )
+            .deprecated();
+
+        builder.method("SetDefaultWaveform",
+            ("waveform", ),
+            (),
+            move |ctx, state, (waveform, ): (u8, )| {
+                state.ebc.set_default_waveform(waveform)?;
+
+                let signal_msg = waveform_changed(ctx.path(), &());
+                ctx.push_msg(signal_msg);
+
+                prop_wf_changed(ctx.path(), &waveform).map(|msg| ctx.push_msg(msg));
+                Ok(())
+            }
         );
-
-
-        let split_area_limit_changed = builder
-            .signal::<( ), _>("SplitAreaLimitChanged", ())
-            .msg_fn();
 
         let split_area_limit_cb = builder.property("SplitAreaLimit")
             .emits_changed_true()
-            .get(|_, svc_ctx| { svc_ctx.ebc_context.get_split_area_limit() })
+            .get(|_, state| { state.ebc.get_split_area_limit() })
             .changed_msg_fn()
         ;
+        let split_area_limit_changed = builder.signal::<( ), _>("SplitAreaLimitChanged", ()).msg_fn();
 
         builder.method("GetSplitAreaLimit",
             (),
             ( "split_limit", ),
-            move |_: &mut Context, svc_ctx, ()| {
-                svc_ctx.ebc_context.get_split_area_limit().map(|r| {(r,)})
+            move |_: &mut Context, state, ()| {
+                state.ebc.get_split_area_limit().map(|r| {(r,)})
             }
-        );
+        ).deprecated();
 
         builder.method("SetSplitAreaLimit",
             ( "split_limit", ),
             (),
-            move |ctx, svc_ctx, (split_limit, )| {
-                svc_ctx.ebc_context.set_split_area_limit(split_limit);
+            move |ctx, state, (split_limit, )| {
+                state.ebc.set_split_area_limit(split_limit);
                 let msg = split_area_limit_changed(ctx.path(), &());
                 ctx.push_msg(msg);
                 split_area_limit_cb(ctx.path(), &split_limit).map(|msg| ctx.push_msg(msg));
                 Ok(())
             }
         );
+
+        builder.method("TriggerGlobalRefresh",
+            (), // In args
+            (), // Out args
+            move |_, state, ()| { state.ebc.trigger_global_refresh() }
+        );
+    }
+
+    fn get_auto_refresh(&self) -> Result<bool, MethodErr> {
+        let ret = sys_handler::get_auto_refresh();
+
+        Ok(ret)
+    }
+
+    fn set_auto_refresh(&mut self, value: bool) -> Result<Option<bool>, MethodErr> {
+        sys_handler::set_auto_refresh(value);
+
+        Ok(Some(value))
+    }
+
+    fn get_bw_dither_invert(&self) -> Result<bool, MethodErr> {
+        let ret = sys_handler::get_bw_dither_invert();
+
+        Ok(ret)
+    }
+
+    fn set_bw_dither_invert(&mut self, value: bool) -> Result<Option<bool>, MethodErr> {
+        sys_handler::set_bw_dither_invert(value);
+
+        Ok(Some(value))
+    }
+
+    fn get_bw_mode(&self) -> Result<u8, MethodErr> {
+        let ret = sys_handler::get_bw_mode();
+
+        Ok(ret)
+    }
+
+    fn set_bw_mode(&mut self, value: u8) -> Result<Option<u8>, MethodErr> {
+        let bw_mode = BwMode::try_from(value).map_err(|_| {
+            MethodErr::invalid_arg(&format!("{value} is not a valide mode."))
+        })?;
+
+        // TODO: Make this function report error ?
+        sys_handler::set_bw_mode(bw_mode as u8);
+
+        Ok(Some(value))
+    }
+
+    fn get_dclk_select(&self) -> Result<i16, MethodErr> {
+        let r = sys_handler::get_dclk_select();
+
+        Ok(r)
+    }
+
+    fn set_dclk_select(&mut self, value: i16) -> Result<Option<i16>, MethodErr> {
+        sys_handler::set_dclk_select(value);
+
+        Ok(Some(value))
     }
 
     fn get_default_waveform(&self) -> Result<u8, MethodErr> {
@@ -113,9 +244,26 @@ impl EbcContext {
         Ok(Some(value))
     }
 
-    fn trigger_global_refresh(&self) -> Result<(), MethodErr> {
-        ebc_ioctl::trigger_global_refresh();
-        Ok(())
+    fn get_globre_convert_before(&self) -> Result<bool, MethodErr> {
+        let r = sys_handler::get_globre_convert_before();
+
+        Ok(r)
+    }
+
+    fn set_globre_convert_before(&mut self, value: bool) -> Result<Option<bool>, MethodErr> {
+        sys_handler::set_globre_convert_before(value);
+
+        Ok(Some(value))
+    }
+
+    fn get_no_off_screen(&self) -> Result<bool, MethodErr> {
+        Ok(sys_handler::get_no_off_screen())
+    }
+
+    fn set_no_off_screen(&mut self, value: bool) -> Result<Option<bool>, MethodErr> {
+        sys_handler::set_no_off_screen(value);
+
+        Ok(Some(value))
     }
 
     fn get_split_area_limit(&self) -> Result<u32, MethodErr> {
@@ -125,5 +273,10 @@ impl EbcContext {
 
     fn set_split_area_limit(&self, limit: u32) {
         sys_handler::set_split_area_limit(limit);
+    }
+
+    fn trigger_global_refresh(&self) -> Result<(), MethodErr> {
+        ebc_ioctl::trigger_global_refresh();
+        Ok(())
     }
 }
