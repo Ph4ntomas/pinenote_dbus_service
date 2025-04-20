@@ -118,6 +118,15 @@ fn write_ebc_file(parameter : &str, new_value : u8) {
     write!(&file, "{}", new_value).unwrap();
 }
 
+fn write_ebc_file_i16(parameter: &str, new_value: i16) {
+    let device = format!("/sys/module/rockchip_ebc/parameters/{parameter}");
+    println!("Writing to {device}: {new_value}");
+    let file = OpenOptions::new().write(true)
+        .open(device).expect("Error opening the file");
+
+    write!(&file, "{}", new_value).unwrap();
+}
+
 fn write_ebc_file_u32(parameter : &str, new_value : u32) {
     let device = format!("/sys/module/rockchip_ebc/parameters/{parameter}");
     println!("Writing to {device}: {new_value}");
@@ -206,13 +215,13 @@ pub fn set_no_off_screen(new_mode: bool){
     write_ebc_file("no_off_screen", new_mode as u8);
 }
 
-pub fn get_dclk_select() ->u8 {
-    read_ebc_file("dclk_select").parse::<u8>().unwrap()
+pub fn get_dclk_select() -> i16 {
+    read_ebc_file("dclk_select").parse::<i16>().unwrap()
 }
 
-pub fn set_dclk_select(new_mode: u8){
+pub fn set_dclk_select(new_mode: i16){
     // todo: allowed values: -1, 0, 1
-    write_ebc_file("dclk_select", new_mode);
+    write_ebc_file_i16("dclk_select", new_mode);
 }
 
 pub fn get_globre_convert_before() -> bool {

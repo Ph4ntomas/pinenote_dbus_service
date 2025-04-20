@@ -374,7 +374,7 @@ fn main() -> Result<(), Box<dyn Error>> {
             "SetDclkSelect",
             ("state", ),
             (),
-            move |_ctx: &mut Context, _dum: &mut EbcObject, (state, ): (u8, )| {
+            move |_ctx: &mut Context, _dum: &mut EbcObject, (state, ): (i16, )| {
                 sys_handler::set_dclk_select(state);
                 let signal_msg = dclk_select_changed(_ctx.path(), &());
                 _ctx.push_msg(signal_msg);
