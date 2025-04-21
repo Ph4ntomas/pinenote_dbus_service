@@ -20,7 +20,6 @@ pub mod enums {
         GL16,
         GLR16,
         GLD16,
-        MAX
     }
 
     #[derive(TryFromPrimitive, IntoPrimitive, Clone)]
