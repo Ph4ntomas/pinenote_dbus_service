@@ -193,8 +193,7 @@ fn main() -> Result<(), Box<dyn Error>> {
                 Ok(Some(0))
             });
 
-        b.method(
-            "TriggerGlobalRefresh",
+        b.method("TriggerGlobalRefresh",
             (),
             (),
             move |_ctx: &mut Context, _hello: &mut EbcObject, ()| {
@@ -203,8 +202,7 @@ fn main() -> Result<(), Box<dyn Error>> {
             }
         );
 
-        b.method(
-            "GetSplitAreaLimit",
+        b.method( "GetSplitAreaLimit",
             (),
             ("splt_limit", ),
             move |_ctx: &mut Context, _dum: &mut EbcObject, ( )| {
@@ -251,8 +249,7 @@ fn main() -> Result<(), Box<dyn Error>> {
             }
         );
 
-        b.method(
-            "GetAutoRefresh",
+        b.method( "GetAutoRefresh",
             (),
             ("state_auto_refresh", ),
             move |_ctx: &mut Context, _dum: &mut EbcObject, ( )| {
@@ -262,8 +259,7 @@ fn main() -> Result<(), Box<dyn Error>> {
             }
         );
         // DEPRECATED
-        b.method(
-            "GetAutorefresh",
+        b.method( "GetAutorefresh",
             (),
             ("state_autorefresh", ),
             move |_ctx: &mut Context, _dum: &mut EbcObject, ( )| {
@@ -273,8 +269,7 @@ fn main() -> Result<(), Box<dyn Error>> {
             }
         ).deprecated();
 
-        b.method(
-            "SetAutoRefresh",
+        b.method( "SetAutoRefresh",
             ("state", ),
             (),
             move |_ctx: &mut Context, _dum: &mut EbcObject, (state, ): (bool, )| {
@@ -893,8 +888,10 @@ fn main() -> Result<(), Box<dyn Error>> {
     c.request_name("org.pinenote.service", false, true, false)?;
 
     cr.set_add_standard_ifaces(true);
-    let v1_ebc = cr.register("org.pinenote.experimental.Ebc1", EbcState::build_v1);
-    cr.insert(format!("{base_path}/experimental"), &[v1_ebc], State::default());
+    let mut ebc = EbcState::new();
+
+    let v1_ebc = cr.register("org.pinenote.experimental.Ebc1", |b| ebc.build_v2(b));
+    cr.insert(format!("{base_path}/experimental"), &[v1_ebc], State { ebc });
 
     // Serve clients forever.
     println!("Starting PineNote DBUS service");
