@@ -1,7 +1,6 @@
 use std::{fmt::Display, str::FromStr};
 
 use dbus::MethodErr;
-//use sys_handler;
 use dbus_crossroads::{Context, IfaceBuilder};
 use num_enum::TryFromPrimitive;
 
@@ -82,39 +81,6 @@ T::Primitive: FromStr + Display
     }
 }
 
-//trait DbusPropertyWrapper<Prop: DbusProperty> {
-    //fn property(&self) -> &T;
-    //fn property_mut(&mut self) -> &mut T;
-    //fn emit_changed(&self) -> bool;
-    //fn setter_hooks(&self) -> &Vec<Box<dyn Fn(&mut Context, &Prop::DBusRepr) -> Option<dbus::Message> + Send>>;
-
-    //fn get(&self) -> Result<T::DBusRepr, MethodErr> {
-        //self.property().get_()
-    //}
-
-    //fn set(&mut self, value: T::DBusRepr) -> Result<Option<T::DBusRepr>, MethodErr> {
-        //self.property_mut()
-            //.set_(value)
-            //.map_err(MethodErr::from)
-            //.map(|v| if self.emit_changed() { Some(v) } else { None })
-    //}
-
-    //fn getter(&self) -> Result<(T::DBusRepr, ), MethodErr> {
-        //self.get().map(|v| (v,))
-    //}
-
-    //fn setter(&mut self, ctx: &mut Context, value: T::DBusRepr) -> Result<(), MethodErr> {
-        //let value = self.property_mut().set(value)?;
-
-        //let msgs : Vec<_>  = self.setter_hooks().iter()
-            //.flat_map(|f| f(ctx, &value)).collect();
-
-        //msgs.into_iter().for_each(|msg| ctx.push_msg(msg));
-
-        //Ok(())
-    //}
-//}
-
 pub enum PropertyMethodOps {
     Enabled(&'static str),
     Deprecated(&'static str),
@@ -131,79 +97,6 @@ struct PropertyWrapper<T>
     setter_ops: PropertyMethodOps,
     setter_hooks: Vec<Box<dyn Fn(&mut Context, &T::DBusRepr) -> Option<dbus::Message> + Send>>
 }
-
-//impl<T: DbusProperty> DbusPropertyWrapper<T> for PropertyWrapper<T> {
-    //fn property(&self) -> &T { &self.property }
-    //fn property_mut(&mut self) -> &mut T { &mut self.property }
-    //fn emit_changed(&self) -> bool { self.emit_changed }
-    //fn setter_hooks(&self) -> &Vec<Box<dyn Fn(&mut Context, &<T as DbusProperty>::DBusRepr) -> Option<dbus::Message> + Send>> {
-        //&self.setter_hooks
-    //}
-//}
-
-//trait DbusPropertyBuilder<Prop> : DbusPropertyWrapper<Prop> where
-//Prop: DbusProperty,
-//Prop::DBusRepr: dbus::arg::Arg + dbus::arg::RefArg + dbus::arg::Append + for <'x> dbus::arg::Get<'x> + 'static
-//{
-    //fn name(&self) -> String;
-
-    //fn build<State, T>(&mut self, builder: &mut IfaceBuilder<State>, access: T) where
-        //T: Fn(&mut State) -> &mut Self + Clone + Send + 'static,
-        //State: Send
-    //{
-        //let get_access = access.clone();
-        //let set_access = access.clone();
-
-        //let prop = builder.property(&self.name())
-            //.get(move |_, state| get_access(state).get())
-            //.set(move |_, state, value| set_access(state).set(value))
-        //;
-
-        ////if self.emit_changed() {
-            ////let m = prop
-                ////.emits_changed_true()
-                ////.changed_msg_fn();
-
-            ////self.setter_hooks().push(Box::new(move |ctx: &mut Context, val| {
-                ////m(ctx.path(), val)
-            ////}));
-        ////} else {
-            ////prop.emits_changed_false();
-        ////}
-
-        ////match &self.getter_ops {
-            ////PropertyMethodOps::Enabled(arg_name) | PropertyMethodOps::Deprecated(arg_name) => {
-                ////let get_access = access.clone();
-
-                ////let method = builder.method(format!("Get{}", &self.name),
-                    ////(), (*arg_name, ),
-                    ////move | _, state, () | get_access(state).getter()
-                ////);
-
-                ////if let PropertyMethodOps::Deprecated(_) = &self.getter_ops {
-                    ////method.deprecated();
-                ////}
-            ////},
-            ////_ => {}
-        ////}
-
-        ////match &self.setter_ops {
-            ////PropertyMethodOps::Enabled(arg_name) | PropertyMethodOps::Deprecated(arg_name) => {
-                ////let set_access = access.clone();
-
-                ////let method = builder.method(format!("Set{}", &self.name),
-                    ////(*arg_name,), (),
-                    ////move | ctx, state, (value,) | set_access(state).setter(ctx, value)
-                    ////);
-
-                ////if let PropertyMethodOps::Deprecated(_) = &self.getter_ops {
-                    ////method.deprecated();
-                ////}
-            ////},
-            ////_ => {}
-        ////}
-    //}
-//}
 
 impl<Prop> PropertyWrapper<Prop> where
 Prop: DbusProperty,
@@ -309,87 +202,11 @@ Prop::DBusRepr: dbus::arg::Arg + dbus::arg::RefArg + dbus::arg::Append + for <'x
     }
 }
 
-//impl PropertyWrapper<BoolParameter> {
-    //pub fn new(
-        //name: impl Into<String>, property: BoolParameter, emit_changed: bool,
-        //getter_ops: PropertyMethodOps, setter_ops: PropertyMethodOps
-    //) -> Self {
-        //let name = name.into();
-
-        //Self {
-            //name,
-            //property,
-            //emit_changed,
-            //getter_ops,
-            //setter_ops,
-            //setter_hooks: Vec::new()
-        //}
-    //}
-
-    //pub fn build<State, T>(&mut self, builder: &mut IfaceBuilder<State>, access: T) where
-        //T: Fn(&mut State) -> &mut Self + Clone + Send + 'static,
-        //State: Send
-    //{
-        //let get_access = access.clone();
-        //let set_access = access.clone();
-
-        //let prop = builder.property(&self.name)
-            //.get(move |_, state| get_access(state).get())
-            //.set(move |_, state, value| set_access(state).set(value))
-        //;
-
-        //if self.emit_changed {
-            //let m = prop
-                //.emits_changed_true()
-                //.changed_msg_fn();
-
-            //self.setter_hooks.push(Box::new(move |ctx: &mut Context, val| {
-                //m(ctx.path(), val)
-            //}));
-        //} else {
-            //prop.emits_changed_false();
-        //}
-
-        //match &self.getter_ops {
-            //PropertyMethodOps::Enabled(arg_name) | PropertyMethodOps::Deprecated(arg_name) => {
-                //let get_access = access.clone();
-
-                //let method = builder.method(format!("Get{}", &self.name),
-                    //(), (*arg_name, ),
-                    //move | _, state, () | get_access(state).getter()
-                //);
-
-                //if let PropertyMethodOps::Deprecated(_) = &self.getter_ops {
-                    //method.deprecated();
-                //}
-            //},
-            //_ => {}
-        //}
-
-        //match &self.setter_ops {
-            //PropertyMethodOps::Enabled(arg_name) | PropertyMethodOps::Deprecated(arg_name) => {
-                //let set_access = access.clone();
-
-                //let method = builder.method(format!("Set{}", &self.name),
-                    //(*arg_name,), (),
-                    //move | ctx, state, (value,) | set_access(state).setter(ctx, value)
-                    //);
-
-                //if let PropertyMethodOps::Deprecated(_) = &self.getter_ops {
-                    //method.deprecated();
-                //}
-            //},
-            //_ => {}
-        //}
-    //}
-//}
-
 pub struct EbcState {
     auto_refresh: PropertyWrapper<BoolParameter>,
     bw_mode: PropertyWrapper<EnumParameter<BwMode>>,
     default_waveform: PropertyWrapper<EnumParameter<Waveform>>,
 }
-
 
 impl EbcState {
     pub fn new() -> Self {

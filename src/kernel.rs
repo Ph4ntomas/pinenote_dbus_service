@@ -154,7 +154,7 @@ Enum::Primitive: FromStr + Display
     pub fn path(&self) -> &str { self.common.path() }
 }
 
-pub trait ModuleParamPath {
+pub trait ModuleParamBase {
     fn get_path(&self) -> String;
 
     fn read_raw(&self) -> Result<String, Error> {
@@ -193,13 +193,13 @@ pub trait ModuleParamPath {
 
 }
 
-impl<T> ModuleParamPath for PrimitiveParameter<T> {
+impl<T> ModuleParamBase for PrimitiveParameter<T> {
     fn get_path(&self) -> String {
         self.path().to_string()
     }
 }
 
-impl<T> ModuleParamPath for EnumParameter<T> where
+impl<T> ModuleParamBase for EnumParameter<T> where
     T: TryFromPrimitive + Into<T::Primitive>,
     T::Primitive: FromStr + Display
 {
@@ -208,20 +208,17 @@ impl<T> ModuleParamPath for EnumParameter<T> where
     }
 }
 
-impl ModuleParamPath for BoolParameter {
+impl ModuleParamBase for BoolParameter {
     fn get_path(&self) -> String {
         self.path().to_string()
     }
 }
 
-pub trait ModuleParam<T> : ModuleParamPath {
+pub trait ModuleParam<T> : ModuleParamBase {
     type Repr;
 
     fn read(&self) -> Result<T, Error>;
     fn write(&self, value: T) -> Result<T, Error>;
-
-    //fn get(&self) -> Result<T, Error> { self.read() }
-    //fn set(&self, value: T) -> Result<T, Error> { self.write(value) }
 }
 
 impl<T> ModuleParam<T> for PrimitiveParameter<T> where
