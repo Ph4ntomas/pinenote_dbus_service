@@ -2,3 +2,4 @@ pub mod interfaces;
 pub mod sys_handler;
 pub mod ebc_ioctl;
 pub mod kernel;
+pub mod dbus;
