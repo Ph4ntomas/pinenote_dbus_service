@@ -150,7 +150,7 @@ impl EbcState {
             ),
             delay_a: PWrap::new(
                 module.primitive_parameter("delay_a"),
-                "BwThreshold",
+                "DelayA",
                 true,
                 MOps::Disabled, MOps::Enabled("threshold")
             ),
@@ -163,7 +163,7 @@ impl EbcState {
             ),
             early_cancellation_addition: PWrap::new(
                 module.primitive_parameter("early_cancellation_addition"),
-                "EarlyCancellatioAdditionalFrames",
+                "EarlyCancellationAdditionalFrames",
                 true,
                 MOps::Disabled,
                 MOps::Enabled("num_frames")
