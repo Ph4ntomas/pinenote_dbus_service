@@ -146,7 +146,7 @@ impl EbcState {
                 module.generic_parameter("default_hint"),
                 "DefaultHint",
                 true,
-                MOps::Disabled, MOps::Enabled("hints")
+                MOps::Disabled, MOps::Disabled
             ),
             delay_a: PWrap::new(
                 module.primitive_parameter("delay_a"),
@@ -211,5 +211,10 @@ impl EbcState {
         self.redraw_delay.build(builder, |s| &mut s.redraw_delay);
         self.refresh_thread_wait_idle.build(builder, |s| &mut s.refresh_thread_wait_idle);
         self.shrink_vwindow.build(builder, |s| &mut s.shrink_vwindow);
+
+        builder.method("SetDefaultHints",
+            ( "bit_depth", "convert_mode", "redraw" ), (),
+            |ctx, s, v| s.default_hint.setter(ctx, v)
+        );
     }
 }

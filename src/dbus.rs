@@ -179,11 +179,11 @@ Prop::DBusRepr: dbus::arg::Arg + dbus::arg::RefArg + dbus::arg::Append + for <'x
             .map(|v| if self.emit_changed { Some(v) } else { None })
     }
 
-    fn getter(&self) -> Result<(Prop::DBusRepr, ), MethodErr> {
+    pub fn getter(&self) -> Result<(Prop::DBusRepr, ), MethodErr> {
         self.get().map(|v| (v,))
     }
 
-    fn setter(&mut self, ctx: &mut Context, value: Prop::DBusRepr) -> Result<(), MethodErr> {
+    pub fn setter(&mut self, ctx: &mut Context, value: Prop::DBusRepr) -> Result<(), MethodErr> {
         let value = self.property.set(value)?;
 
         let msgs : Vec<_>  = self.setter_hooks.iter()
