@@ -17,8 +17,7 @@
  * */
 use dbus::blocking::Connection;
 use dbus_crossroads::{Crossroads, Context};
-use pinenote_dbus_service::interfaces::ebc::EbcState;
-use pinenote_dbus_service::interfaces::ebc::State;
+use pinenote_dbus_service::interfaces::v1::ebc::EbcState;
 use pinenote_dbus_service::ebc_ioctl;
 use pinenote_dbus_service::sys_handler;
 use std::error::Error;
@@ -884,14 +883,14 @@ fn main() -> Result<(), Box<dyn Error>> {
     cr.insert("/misc", &[iface_token4], EbcObject{});
 
 
-    let base_path = "/org/pinenote/Controller";
-    c.request_name("org.pinenote.service", false, true, false)?;
+    let base_path = "/org/pinenote/Service1";
+    c.request_name("org.pinenote.Service1", false, true, false)?;
 
     cr.set_add_standard_ifaces(true);
     let mut ebc = EbcState::new();
 
-    let v1_ebc = cr.register("org.pinenote.experimental.Ebc1", |b| ebc.build_v2(b));
-    cr.insert(format!("{base_path}/experimental"), &[v1_ebc], State { ebc });
+    let v1_ebc = cr.register("org.pinenote.Service1.Ebc1", |b| ebc.build(b));
+    cr.insert(format!("{base_path}"), &[v1_ebc], ebc);
 
     // Serve clients forever.
     println!("Starting PineNote DBUS service");
