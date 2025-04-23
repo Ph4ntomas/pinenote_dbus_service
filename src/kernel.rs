@@ -1,3 +1,6 @@
+// TODO: Do not clone in write
+
+
 use std::fmt::Display;
 use std::str::FromStr;
 use std::{fs::OpenOptions, marker::PhantomData};
@@ -67,6 +70,14 @@ impl Module {
     pub fn bool_parameter(&self, parameter: impl Into<String>) -> BoolParameter {
         BoolParameter::new(&self.name, parameter)
     }
+
+    pub fn generic_parameter<T>(&self, parameter: impl Into<String>) -> GenericParameter<T>
+    where
+        T: TryFromKernelParam + Into<T::KRepr>,
+        T::KRepr: FromStr + Display
+    {
+        GenericParameter::new(&self.name, parameter)
+    }
 }
 
 struct ParameterCommon {
@@ -91,6 +102,15 @@ impl ParameterCommon {
     fn module(&self) -> &str { &self.module }
     fn parameter(&self) -> &str { &self.parameter }
     fn path(&self) -> &str { &self.path }
+}
+
+pub trait TryFromKernelParam
+where Self: Sized
+{
+    type KRepr;
+    type Error;
+
+    fn try_from_kernel(value: Self::KRepr) -> Result<Self, Self::Error>;
 }
 
 pub struct PrimitiveParameter<Repr> {
@@ -154,6 +174,31 @@ Enum::Primitive: FromStr + Display
     pub fn path(&self) -> &str { self.common.path() }
 }
 
+pub struct GenericParameter<Type> where
+Type: TryFromKernelParam + Into<Type::KRepr>
+{
+    common: ParameterCommon,
+    phantom: PhantomData<Type>
+}
+
+impl<Type> GenericParameter<Type> where
+Type: TryFromKernelParam + Into<Type::KRepr>,
+Type::KRepr: FromStr + Display
+{
+    pub fn new(module: impl Into<String>, parameter: impl Into<String>) -> Self {
+        let common = ParameterCommon::new(module, parameter);
+
+        Self {
+            common,
+            phantom: PhantomData{}
+        }
+    }
+
+    pub fn module(&self) -> &str { self.common.module() }
+    pub fn parameter(&self) -> &str { self.common.parameter() }
+    pub fn path(&self) -> &str { self.common.path() }
+}
+
 pub trait ModuleParamBase {
     fn get_path(&self) -> String;
 
@@ -208,6 +253,15 @@ impl<T> ModuleParamBase for EnumParameter<T> where
     }
 }
 
+impl<T> ModuleParamBase for GenericParameter<T> where
+    T: TryFromKernelParam + Into<T::KRepr>,
+    T::KRepr: FromStr + Display
+{
+    fn get_path(&self) -> String {
+        self.path().to_string()
+    }
+}
+
 impl ModuleParamBase for BoolParameter {
     fn get_path(&self) -> String {
         self.path().to_string()
@@ -256,6 +310,25 @@ T::Primitive: FromStr + Display
     }
 }
 
+impl<T> ModuleParam<T> for GenericParameter<T> where
+T: TryFromKernelParam + Into<T::KRepr> + Clone,
+T::KRepr: FromStr + Display
+{
+    type Repr = T::KRepr;
+
+    fn read(&self) -> Result<T, Error> {
+        self.read_raw()
+            .and_then(|v| v.parse::<Self::Repr>().map_err(|_| Error::ParseError ))
+            .and_then(|v| T::try_from_kernel(v).map_err(|_| Error::ConvertError ))
+    }
+
+    fn write(&self, value:T) -> Result<T, Error> {
+        let prim = value.clone().into();
+        self.write_raw(format!("{prim}"))?;
+        Ok(value)
+    }
+}
+
 impl ModuleParam<bool> for BoolParameter {
     type Repr = bool;
 
@@ -274,4 +347,3 @@ impl ModuleParam<bool> for BoolParameter {
         Ok(value)
     }
 }
-

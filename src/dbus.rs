@@ -21,7 +21,7 @@ impl From<kernel::Error> for MethodErr {
     }
 }
 
-trait Property {
+pub trait Property {
     type DBusRepr;
 
     fn get(&self) -> Result<Self::DBusRepr, MethodErr>;
@@ -35,7 +35,7 @@ impl Property for BoolParameter {
         self.read().map_err(MethodErr::from)
     }
 
-    fn set(&mut self, value: bool) -> Result<bool, MethodErr> {
+    fn set(&mut self, value: Self::DBusRepr) -> Result<bool, MethodErr> {
         self.write(value).map_err(MethodErr::from)
     }
 }
