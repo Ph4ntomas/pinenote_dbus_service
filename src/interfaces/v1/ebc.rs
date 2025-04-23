@@ -169,7 +169,7 @@ impl EbcState {
                 MOps::Enabled("num_frames")
             ),
             limit_fb_blit: PWrap::new(
-                module.primitive_parameter("limit_fb_blit"),
+                module.primitive_parameter("limit_fb_blits"),
                 "LimitFbBlit",
                 true, MOps::Disabled, MOps::Enabled("num_blits")
             ),
