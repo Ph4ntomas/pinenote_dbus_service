@@ -1,14 +1,15 @@
-use dbus_crossroads::{Context, IfaceBuilder};
+use dbus_crossroads::IfaceBuilder;
 use num_enum::{IntoPrimitive, TryFromPrimitive};
 
-use crate::{dbus::{PropertyMethodOps, PropertyWrapper}, kernel::{
-    self, GenericParameter, Module, PrimitiveParameter, TryFromKernelParam, ModuleParam
+use crate::{dbus::PropertyMethodOps, kernel::{
+    self, Module, TryFromKernelParam, ModuleParam
 }};
 
 use crate::dbus::PropertyWrapper as PWrap;
 use kernel::PrimitiveParameter as KPParam;
 use kernel::BoolParameter as KBParam;
 use kernel::EnumParameter as KEParam;
+use kernel::GenericParameter as KGParam;
 
 #[derive(TryFromPrimitive, IntoPrimitive, Clone)]
 #[repr(u8)]
@@ -84,7 +85,7 @@ impl TryFromKernelParam for PixelHints {
     }
 }
 
-impl crate::dbus::Property for GenericParameter<PixelHints> {
+impl crate::dbus::Property for KGParam<PixelHints> {
     type DBusRepr = (u8, u8, bool);
 
     fn get(&self) -> Result<Self::DBusRepr, dbus::MethodErr> {
@@ -116,7 +117,7 @@ impl crate::dbus::Property for GenericParameter<PixelHints> {
 }
 
 pub struct EbcState {
-    default_hint: PWrap<GenericParameter<PixelHints>>,
+    default_hint: PWrap<KGParam<PixelHints>>,
     //direct_mode:
     bw_threshold: PWrap<KPParam<i32>>,
     delay_a: PWrap<KPParam<i32>>,
@@ -141,7 +142,6 @@ impl EbcState {
                 true,
                 MOps::Disabled, MOps::Enabled("threshold")
             ),
-
             default_hint: PWrap::new(
                 module.generic_parameter("default_hint"),
                 "DefaultHint",
@@ -211,19 +211,5 @@ impl EbcState {
         self.redraw_delay.build(builder, |s| &mut s.redraw_delay);
         self.refresh_thread_wait_idle.build(builder, |s| &mut s.refresh_thread_wait_idle);
         self.shrink_vwindow.build(builder, |s| &mut s.shrink_vwindow);
-
-
-        //let auto_reresh_changed_sig = builder.signal::<(), _>("AutoRefreshChanged", ()).msg_fn();
-        //let bw_mode_changed_sig = builder.signal::<(), _>("BwModeChanged", ()).msg_fn();
-        //let waveform_changed_sig = builder.signal::<(), _>("WaveformChanged", ()).msg_fn();
-
-        //self.auto_refresh.build(builder, |s| &mut s.auto_refresh);
-        //self.auto_refresh.setter_hooks.push(Box::new(move |ctx, _| Some(auto_reresh_changed_sig(ctx.path(), &()))));
-
-        //self.bw_mode.build(builder, |s| &mut s.bw_mode);
-        //self.bw_mode.setter_hooks.push(Box::new(move |ctx, _| Some(bw_mode_changed_sig(ctx.path(), &()))));
-
-        //self.default_waveform.build(builder, |s| &mut s.default_waveform);
-        //self.default_waveform.setter_hooks.push(Box::new(move |ctx, _| Some(waveform_changed_sig(ctx.path(), &()))));
     }
 }
