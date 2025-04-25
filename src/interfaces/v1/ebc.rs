@@ -5,7 +5,7 @@ use dbus_crossroads::{Context, IfaceBuilder};
 use num_enum::{IntoPrimitive, TryFromPrimitive};
 
 use crate::{dbus::PropertyMethodOps, kernel::{
-    self, ioctl::drm::rockchip_ebc, Module, ModuleParam, TryFromKernelParam
+    self, ioctl::{drm::rockchip_ebc, IoctlError}, Module, ModuleParam, TryFromKernelParam
 }};
 
 use crate::dbus::PropertyWrapper as PWrap;
@@ -332,6 +332,10 @@ impl EbcState {
             ( "set_default", "hints"), (), | ctx, s, (default, hints) |
             s.set_hints(ctx, default, hints)
         );
+
+        builder.method("SetFastMode",
+            ( "fast", ), (), | ctx, s, (fast, ) | s.set_fast_mode(ctx, fast)
+        );
     }
 
     pub fn refresh_screen(&self, _ctx: &mut Context) -> Result<(), MethodErr> {
@@ -344,6 +348,11 @@ impl EbcState {
                 Err(MethodErr::failed("Internal Error"))
             }
         }
+    }
+
+    fn ioctl_internal_error(error: IoctlError) -> MethodErr {
+        eprintln!("{error}");
+        MethodErr::failed("Internal Error")
     }
 
     fn do_set_default_hint(&self, hints: rockchip_ebc::RectHints) -> Result<(), MethodErr> {
@@ -388,7 +397,10 @@ impl EbcState {
             rect_hints: Vec::new()
         };
 
-
         self.do_set_default_hint(hints)
+    }
+
+    pub fn set_fast_mode(&mut self, _ctx: &mut Context, fast: bool) -> Result<(), MethodErr> {
+        self.ebc_ioctl.set_fast_mode(fast).map_err(Self::ioctl_internal_error)
     }
 }

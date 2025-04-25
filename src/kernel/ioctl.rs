@@ -73,4 +73,14 @@ impl RockchipEbc {
 
         Ok(())
     }
+
+    pub fn set_fast_mode(&self, fast: bool) -> Result<(), IoctlError> {
+        let file = open_device(Self::DEVICE)?;
+
+        unsafe {
+            drm::rockchip_ebc::set_fast_mode(file.as_raw_fd(), fast)?;
+        }
+
+        Ok(())
+    }
 }
