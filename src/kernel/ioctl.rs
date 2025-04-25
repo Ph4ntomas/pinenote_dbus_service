@@ -39,7 +39,7 @@ impl Display for IoctlError {
     }
 }
 
-pub(crate) fn open_device(path: &str) -> Result<File, IoctlError> {
+fn open_device(path: &str) -> Result<File, IoctlError> {
     OpenOptions::new()
         .read(true)
         .write(true)

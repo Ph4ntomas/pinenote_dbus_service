@@ -36,12 +36,13 @@ impl Property for BoolParameter {
     }
 
     fn set(&mut self, value: Self::DBusRepr) -> Result<bool, MethodErr> {
-        self.write(value).map_err(MethodErr::from)
+        self.write(value).map_err(MethodErr::from)?;
+        Ok(value)
     }
 }
 
 impl<T> Property for PrimitiveParameter<T> where
-T: FromStr + Display
+T: FromStr + Display + Copy
 {
     type DBusRepr = <PrimitiveParameter<T> as ModuleParam<T>>::Repr;
 
@@ -50,13 +51,15 @@ T: FromStr + Display
     }
 
     fn set(&mut self, value: Self::DBusRepr) -> Result<Self::DBusRepr, MethodErr> {
-        self.write(value).map_err(MethodErr::from)
+        self.write(value).map_err(MethodErr::from)?;
+
+        Ok(value)
     }
 }
 
 impl<T> Property for EnumParameter<T> where
 T: TryFromPrimitive + Into<T::Primitive> + Clone,
-T::Primitive: FromStr + Display
+T::Primitive: FromStr + Display + Copy
 {
     type DBusRepr = T::Primitive;
 
@@ -70,7 +73,8 @@ T::Primitive: FromStr + Display
         let val = T::try_from_primitive(value).map_err(|_|
             MethodErr::invalid_arg(&format!("Bad parameter")))?;
 
-        self.write(val).map(T::into).map_err(MethodErr::from)
+        self.write(val).map_err(MethodErr::from)?;
+        Ok(value)
     }
 }
 

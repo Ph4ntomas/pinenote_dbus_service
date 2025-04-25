@@ -1,6 +1,6 @@
 pub mod ioctl;
-// TODO: Do not clone in write
-
+pub mod module;
+pub mod uapi;
 
 use std::fmt::Display;
 use std::str::FromStr;
@@ -8,33 +8,6 @@ use std::{fs::OpenOptions, marker::PhantomData};
 use std::io::{self, BufRead, BufReader, Write};
 
 use num_enum::TryFromPrimitive;
-
-pub mod enums {
-    use num_enum::{IntoPrimitive, TryFromPrimitive};
-
-    #[derive(TryFromPrimitive, IntoPrimitive, Clone)]
-    #[repr(u8)]
-    pub enum Waveform {
-        Reset,
-        A2,
-        DU,
-        DU4,
-        GC16,
-        GCC16,
-        GL16,
-        GLR16,
-        GLD16,
-    }
-
-    #[derive(TryFromPrimitive, IntoPrimitive, Clone)]
-    #[repr(u8)]
-    pub enum BwMode {
-        Gray16,
-        BWDither,
-        BWTheshold,
-        Gray4
-    }
-}
 
 pub enum Error {
     IoError(io::Error),
@@ -236,7 +209,6 @@ pub trait ModuleParamBase {
             .and_then(|mut f| { write!(f, "{}", value) })
             .map_err(|e| Error::IoError(e))
     }
-
 }
 
 impl<T> ModuleParamBase for PrimitiveParameter<T> {
@@ -273,7 +245,7 @@ pub trait ModuleParam<T> : ModuleParamBase {
     type Repr;
 
     fn read(&self) -> Result<T, Error>;
-    fn write(&self, value: T) -> Result<T, Error>;
+    fn write(&self, value: T) -> Result<(), Error>;
 }
 
 impl<T> ModuleParam<T> for PrimitiveParameter<T> where
@@ -286,14 +258,14 @@ T: FromStr + Display
             .and_then(|v| v.parse::<T>().map_err(|_| Error::ParseError ))
     }
 
-    fn write(&self, value: T) -> Result<T, Error> {
+    fn write(&self, value: T) -> Result<(), Error> {
         self.write_raw(format!("{value}"))?;
-        Ok(value)
+        Ok(())
     }
 }
 
 impl<T> ModuleParam<T> for EnumParameter<T> where
-T: TryFromPrimitive + Into<T::Primitive> + Clone,
+T: TryFromPrimitive + Into<T::Primitive>,
 T::Primitive: FromStr + Display
 {
     type Repr = T::Primitive;
@@ -304,15 +276,15 @@ T::Primitive: FromStr + Display
             .and_then(|v| T::try_from_primitive(v).map_err(|_| Error::ConvertError ))
     }
 
-    fn write(&self, value:T) -> Result<T, Error> {
-        let prim = value.clone().into();
+    fn write(&self, value:T) -> Result<(), Error> {
+        let prim = value.into();
         self.write_raw(format!("{prim}"))?;
-        Ok(value)
+        Ok(())
     }
 }
 
 impl<T> ModuleParam<T> for GenericParameter<T> where
-T: TryFromKernelParam + Into<T::KRepr> + Clone,
+T: TryFromKernelParam + Into<T::KRepr>,
 T::KRepr: FromStr + Display
 {
     type Repr = T::KRepr;
@@ -323,10 +295,10 @@ T::KRepr: FromStr + Display
             .and_then(|v| T::try_from_kernel(v).map_err(|_| Error::ConvertError ))
     }
 
-    fn write(&self, value:T) -> Result<T, Error> {
-        let prim = value.clone().into();
+    fn write(&self, value:T) -> Result<(), Error> {
+        let prim = value.into();
         self.write_raw(format!("{prim}"))?;
-        Ok(value)
+        Ok(())
     }
 }
 
@@ -343,8 +315,8 @@ impl ModuleParam<bool> for BoolParameter {
         }
     }
 
-    fn write(&self, value: bool) -> Result<bool, Error> {
+    fn write(&self, value: bool) -> Result<(), Error> {
         self.write_raw(format!("{}", value as u8))?;
-        Ok(value)
+        Ok(())
     }
 }
