@@ -190,11 +190,11 @@ pub trait ModuleParamBase {
                     num_bytes = reader.read_line(&mut buf).map_err(|e| { Error::IoError(e) })?;
                 }
 
-                return Ok(buf.trim_end().to_string());
+                Ok(buf.trim_end().to_string())
             },
             Err(e) => {
                 eprintln!("Error while opening file {} for reading: error {}", path, e);
-                return Err(Error::IoError(e))
+                Err(Error::IoError(e))
             }
         }
     }
@@ -207,7 +207,7 @@ pub trait ModuleParamBase {
             .write(true)
             .open(&path)
             .and_then(|mut f| { write!(f, "{}", value) })
-            .map_err(|e| Error::IoError(e))
+            .map_err(Error::IoError)
     }
 }
 

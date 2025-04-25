@@ -31,7 +31,6 @@ use std::{
     os::unix::{fs::OpenOptionsExt, io::AsRawFd},
 };
 use nix::ioctl_readwrite_bad;
-use std::ffi::CString;
 
 // #[repr(C)]
 // pub struct payload {
@@ -60,8 +59,9 @@ pub fn set_offline_screen(new_content: &Vec<u8>) {
     }
 
     unsafe {
-        let str2 = CString::from_vec_with_nul_unchecked(new_content.clone());
+        //let str2 = CString::from_vec_with_nul_unchecked(new_content.clone());
         // let str2 = CString::from_vec_with_nul_unchecked(test_content).expect("Could not create CString");
+        let str2 = new_content.clone();
 
         let mut payload = PayloadEbc2 {
             info1: true,

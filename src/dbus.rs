@@ -71,7 +71,7 @@ T::Primitive: FromStr + Display + Copy
 
     fn set(&mut self, value: Self::DBusRepr) -> Result<Self::DBusRepr, MethodErr> {
         let val = T::try_from_primitive(value).map_err(|_|
-            MethodErr::invalid_arg(&format!("Bad parameter")))?;
+            MethodErr::invalid_arg("Bad parameter"))?;
 
         self.write(val).map_err(MethodErr::from)?;
         Ok(value)
@@ -84,6 +84,7 @@ pub enum PropertyMethodOps {
     Disabled
 }
 
+#[allow(clippy::type_complexity)]
 pub struct PropertyWrapper<T>
     where T: Property
 {
@@ -179,7 +180,6 @@ Prop::DBusRepr: dbus::arg::Arg + dbus::arg::RefArg + dbus::arg::Append + for <'x
     fn set(&mut self, value: Prop::DBusRepr) -> Result<Option<Prop::DBusRepr>, MethodErr> {
         self.property
             .set(value)
-            .map_err(MethodErr::from)
             .map(|v| if self.emit_changed { Some(v) } else { None })
     }
 

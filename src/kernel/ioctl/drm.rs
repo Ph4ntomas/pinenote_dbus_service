@@ -1,4 +1,4 @@
-const IOCTL_MAGIC: u8 = 'd' as u8;
+const IOCTL_MAGIC: u8 = b'd';
 const COMMAND_BASE: u8 = 0x40;
 
 pub mod rockchip_ebc {
@@ -43,13 +43,24 @@ pub mod rockchip_ebc {
 
     }
 
+    ///
+    /// Trigger a full screen refresh
+    ///
+    /// # Safety
+    /// raw_fd must be an open fd to the rockchip_ebc character device.
+    ///
     pub unsafe fn trigger_global_refresh(raw_fd: std::os::fd::RawFd) -> Result<(), nix::errno::Errno> {
         let mut payload = details::GlobalRefresh{ trigger: true };
         details::global_refresh_iowr(raw_fd, &mut payload)?;
         Ok(())
     }
 
-
+    ///
+    /// Set the PineNote off screen content.
+    ///
+    /// # Safety
+    /// raw_fd must be an open fd to the rockchip_ebc character device.
+    ///
     pub unsafe fn set_off_screen(raw_fd: std::os::fd::RawFd, content: &mut [u8; FRAMEBUFFER_SZ_4BPP]) -> Result<(), nix::errno::Errno> {
         let mut payload = details::OffScreenContent {
             info1: 0,
@@ -70,7 +81,14 @@ pub mod rockchip_ebc {
     }
 
     impl ExtractFBs {
-        pub unsafe fn extract_fbs(raw_fd: std::os::fd::RawFd) -> Result<ExtractFBs, nix::errno::Errno> {
+
+        ///
+        /// Extract FrameBuffer information.
+        ///
+        /// # Safety
+        /// raw_fd must be an open fd to the rockchip_ebc character device.
+        ///
+        pub unsafe fn extract(raw_fd: std::os::fd::RawFd) -> Result<ExtractFBs, nix::errno::Errno> {
             let phase_capacity = details::get_phase_size(true);
 
             let mut next_prev: Vec<u8> = vec![0; PIXEL_NUM];
@@ -108,6 +126,12 @@ pub mod rockchip_ebc {
     impl RectHints {
         const MAX_RECT: usize = details::RectHints::MAX_RECT;
 
+        ///
+        /// Set hints for the screen regions
+        ///
+        /// # Safety
+        /// raw_fd must be an open fd to the rockchip_ebc character device.
+        ///
         pub unsafe fn set_rect_hints(self, raw_fd: std::os::fd::RawFd) -> Result<(), nix::errno::Errno> {
             let mut rect_hints: [details::RectHint; Self::MAX_RECT] = Default::default();
 
@@ -128,6 +152,12 @@ pub mod rockchip_ebc {
     }
 
 
+    ///
+    /// Enable or disable fast mode
+    ///
+    /// # Safety
+    /// raw_fd must be an open fd to the rockchip_ebc character device.
+    ///
     pub unsafe fn set_fast_mode(raw_fd: std::os::fd::RawFd, fast: bool) -> Result<(), nix::errno::Errno> {
         let mut payload = details::FastMode {
             fast_mode: fast as u8,

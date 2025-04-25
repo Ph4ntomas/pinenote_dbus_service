@@ -186,6 +186,7 @@ impl EbcState {
         }
     }
 
+    #[allow(clippy::type_complexity)]
     pub fn set_hints(&self, _ctx: &mut Context, default: bool, hints: Vec<((u8, u8, bool), (i32, i32, i32, i32))>) -> Result<(), MethodErr> {
         let hints: Vec<RectHint> = hints.into_iter()
             .enumerate()
@@ -217,5 +218,11 @@ impl EbcState {
 
     pub fn set_fast_mode(&mut self, _ctx: &mut Context, fast: bool) -> Result<(), MethodErr> {
         self.ebc_ioctl.set_fast_mode(fast).map_err(Self::ioctl_internal_error)
+    }
+}
+
+impl Default for EbcState {
+    fn default() -> Self {
+        Self::new()
     }
 }

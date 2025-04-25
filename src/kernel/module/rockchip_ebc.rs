@@ -171,13 +171,13 @@ impl ScreenRect {
     }
 }
 
-impl Into<uapi::drm::Rect> for ScreenRect {
-    fn into(self) -> uapi::drm::Rect {
-        uapi::drm::Rect {
-            x1: self.x,
-            y1: self.y,
-            x2: self.width,
-            y2: self.height
+impl From<ScreenRect> for uapi::drm::Rect {
+    fn from(value: ScreenRect) -> Self {
+        Self {
+            x1: value.x,
+            y1: value.y,
+            x2: value.width,
+            y2: value.height,
         }
     }
 }
@@ -193,11 +193,11 @@ impl RectHint {
     }
 }
 
-impl Into<uapi::rockchip_ebc::RectHint> for RectHint {
-    fn into(self) -> uapi::rockchip_ebc::RectHint {
-        uapi::rockchip_ebc::RectHint {
-            hints: self.hints.into(),
-            rect: self.rect.into()
+impl From<RectHint> for uapi::rockchip_ebc::RectHint {
+    fn from(value: RectHint) -> Self {
+        Self {
+            hints: value.hints.into(),
+            rect: value.rect.into()
         }
     }
 }
@@ -216,11 +216,11 @@ impl RectHints {
     }
 }
 
-impl Into<drm::RectHints> for RectHints {
-    fn into(self) -> drm::RectHints {
+impl From<RectHints> for drm::RectHints {
+    fn from(value: RectHints) -> Self {
         drm::RectHints {
-            set_default_hints: self.set_default,
-            rect_hints: self.rect_hints.into_iter().map(|r| r.into()).collect()
+            set_default_hints: value.set_default,
+            rect_hints: value.rect_hints.into_iter().map(|r| r.into()).collect()
         }
     }
 }
