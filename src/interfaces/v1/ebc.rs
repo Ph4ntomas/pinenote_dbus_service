@@ -1,4 +1,5 @@
-use dbus_crossroads::IfaceBuilder;
+use dbus::MethodErr;
+use dbus_crossroads::{Context, IfaceBuilder};
 use num_enum::{IntoPrimitive, TryFromPrimitive};
 
 use crate::{dbus::PropertyMethodOps, kernel::{
@@ -128,6 +129,8 @@ pub struct EbcState {
     redraw_delay: PWrap<KPParam<i32>>,
     refresh_thread_wait_idle: PWrap<KPParam<i32>>,
     shrink_vwindow: PWrap<KBParam>,
+
+    ebc_ioctl: kernel::ioctl::RockchipEbc,
 }
 
 impl EbcState {
@@ -196,7 +199,9 @@ impl EbcState {
                 module.bool_parameter("shrink_virtual_window"),
                 "ShrinkVirtualWindow", true,
                 MOps::Disabled, MOps::Enabled("shrink_virtual_window")
-            )
+            ),
+
+            ebc_ioctl: Default::default(),
         }
     }
 
@@ -216,5 +221,21 @@ impl EbcState {
             ( "bit_depth", "convert_mode", "redraw" ), (),
             |ctx, s, v| s.default_hint.setter(ctx, v)
         );
+
+        builder.method("RefreshScreen",
+            (), (), |ctx, s, ()| s.refresh_screen(ctx)
+        );
+    }
+
+    pub fn refresh_screen(&self, _ctx: &mut Context) -> Result<(), MethodErr> {
+        let res = self.ebc_ioctl.refresh_screen();
+
+        match res {
+            Ok(_) => Ok(()),
+            Err(e) => {
+                eprintln!("Ebc1: refresh_screen: {}", e);
+                Err(MethodErr::failed("Internal Error"))
+            }
+        }
     }
 }
