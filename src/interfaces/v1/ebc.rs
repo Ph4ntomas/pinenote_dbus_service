@@ -321,7 +321,7 @@ impl EbcState {
 
         builder.method("SetDefaultHints",
             ( "bit_depth", "convert_mode", "redraw" ), (),
-            |ctx, s, v| s.default_hint.setter(ctx, v)
+            |ctx, s, hints| s.set_default_hints(ctx, hints)
         );
 
         builder.method("RefreshScreen",
