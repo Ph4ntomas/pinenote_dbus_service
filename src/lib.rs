@@ -1,6 +1,7 @@
+pub mod dbus;
 pub mod interfaces;
 pub mod kernel;
-pub mod dbus;
+pub mod sys;
 
 
 #[allow(clippy::all)]

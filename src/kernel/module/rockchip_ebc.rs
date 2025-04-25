@@ -2,9 +2,12 @@ use std::fmt::Display;
 
 use num_enum::{IntoPrimitive, TryFromPrimitive};
 
-use crate::kernel::{
-    ioctl::drm::rockchip_ebc as drm,
-    uapi, TryFromKernelParam
+use crate::{
+    kernel::{
+        ioctl::drm::rockchip_ebc as drm,
+        uapi,
+    },
+    sys::TryFromKernelParam
 };
 
 pub const SCREEN_HEIGHT: usize = 1404;

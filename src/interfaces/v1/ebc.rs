@@ -6,14 +6,14 @@ use crate::{dbus::PropertyMethodOps, kernel::{
     module::rockchip_ebc::{
         DitheringMethod, PixelHintsError,
         RectHint, RectHints, ScreenRect},
-    Module, ModuleParam
-}};
+}, sys::{self, Module, ModuleParam }};
+
 
 use crate::dbus::PropertyWrapper as PWrap;
-use kernel::PrimitiveParameter as KPParam;
-use kernel::BoolParameter as KBParam;
-use kernel::EnumParameter as KEParam;
-use kernel::GenericParameter as KGParam;
+use sys::PrimitiveParameter as KPParam;
+use sys::BoolParameter as KBParam;
+use sys::EnumParameter as KEParam;
+use sys::GenericParameter as KGParam;
 use kernel::module::rockchip_ebc::PixelHints;
 
 impl crate::dbus::Property for KGParam<PixelHints> {

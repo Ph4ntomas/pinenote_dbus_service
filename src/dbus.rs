@@ -3,7 +3,7 @@ use dbus::MethodErr;
 use dbus_crossroads::{ Context, IfaceBuilder };
 use num_enum::TryFromPrimitive;
 
-use crate::kernel::{
+use crate::sys::{
     BoolParameter,
     PrimitiveParameter,
     EnumParameter,
@@ -11,12 +11,12 @@ use crate::kernel::{
     self
 };
 
-impl From<kernel::Error> for MethodErr {
-    fn from(value: kernel::Error) -> Self {
+impl From<sys::Error> for MethodErr {
+    fn from(value: sys::Error) -> Self {
         match value {
-            kernel::Error::IoError(_) => MethodErr::failed("Internal Error"),
-            kernel::Error::ParseError => MethodErr::failed("Internal Error"),
-            kernel::Error::ConvertError => MethodErr::invalid_arg("Bad parameter type")
+            sys::Error::IoError(_) => MethodErr::failed("Internal Error"),
+            sys::Error::ParseError => MethodErr::failed("Internal Error"),
+            sys::Error::ConvertError => MethodErr::invalid_arg("Bad parameter type")
         }
     }
 }
