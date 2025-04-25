@@ -2,6 +2,7 @@ use std::{
     fmt::Display, fs::{File, OpenOptions}, os::{fd::AsRawFd, unix::fs::OpenOptionsExt}
 };
 
+use drm::rockchip_ebc::RectHints;
 use nix::errno::Errno;
 
 pub mod drm;
@@ -62,5 +63,14 @@ impl RockchipEbc {
 
         Ok(())
     }
-    //pub fn refresh_screen
+
+    pub fn set_hints(&self, rect_hints: RectHints) -> Result<(), IoctlError> {
+        let file = open_device(Self::DEVICE)?;
+
+        unsafe {
+            rect_hints.set_rect_hints(file.as_raw_fd())?
+        }
+
+        Ok(())
+    }
 }

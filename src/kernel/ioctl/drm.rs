@@ -2,10 +2,10 @@ const IOCTL_MAGIC: u8 = 'd' as u8;
 const COMMAND_BASE: u8 = 0x40;
 
 pub mod rockchip_ebc {
-    use crate::kernel::ioctl::IoctlError;
-
+    // FIXME: Move this to some HW specific module
     pub const SCREEN_WIDTH: usize = 1872;
     pub const SCREEN_HEIGHT: usize = 1404;
+
     pub const FRAMEBUFFER_SZ_4BPP: usize = SCREEN_WIDTH * SCREEN_HEIGHT / 2;
     // FIXME: The current driver has a bug and do not use the height to compute the number of
     // pixels.
@@ -76,9 +76,9 @@ pub mod rockchip_ebc {
 
     }
 
-    pub unsafe fn trigger_global_refresh(raw_fd: std::os::fd::RawFd) -> Result<(), IoctlError> {
+    pub unsafe fn trigger_global_refresh(raw_fd: std::os::fd::RawFd) -> Result<(), nix::errno::Errno> {
         let mut payload = details::GlobalRefreshPayload { trigger: true };
-        details::global_refresh_iowr(raw_fd, &mut payload).map_err(IoctlError::from)?;
+        details::global_refresh_iowr(raw_fd, &mut payload)?;
         Ok(())
     }
 

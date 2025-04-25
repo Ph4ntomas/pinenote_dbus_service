@@ -1,9 +1,11 @@
+use std::fmt::Display;
+
 use dbus::MethodErr;
 use dbus_crossroads::{Context, IfaceBuilder};
 use num_enum::{IntoPrimitive, TryFromPrimitive};
 
 use crate::{dbus::PropertyMethodOps, kernel::{
-    self, Module, TryFromKernelParam, ModuleParam
+    self, ioctl::drm::rockchip_ebc, Module, ModuleParam, TryFromKernelParam
 }};
 
 use crate::dbus::PropertyWrapper as PWrap;
@@ -11,6 +13,10 @@ use kernel::PrimitiveParameter as KPParam;
 use kernel::BoolParameter as KBParam;
 use kernel::EnumParameter as KEParam;
 use kernel::GenericParameter as KGParam;
+
+//FIXME: Move this to some HW specific module
+const SCREEN_HEIGHT: usize = 1404;
+const SCREEN_WIDTH: usize = 1872;
 
 #[derive(TryFromPrimitive, IntoPrimitive, Clone)]
 #[repr(u8)]
@@ -48,6 +54,31 @@ struct PixelHints {
 
 const HINT_REDRAW_SHIFT : u8 = 7;
 const HINT_REDRAW_MASK : u8 = 1 << 7;
+
+enum PixelHintsError {
+    BadBitDepth,
+    BadConvertMode,
+}
+
+impl Display for PixelHintsError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Self::BadBitDepth => write!(f, "Bad bit depth"),
+            Self::BadConvertMode => write!(f, "Bad convert mode")
+        }
+    }
+}
+
+impl PixelHints {
+    fn try_from_part(depth: u8, convert_mode: u8, redraw: bool) -> Result<Self, PixelHintsError> {
+        let bit_depth = HintBitDepth::try_from_primitive(depth)
+            .map_err(|_| PixelHintsError::BadBitDepth)?;
+        let convert_mode = HintConvertMode::try_from_primitive(convert_mode)
+            .map_err(|_| PixelHintsError::BadConvertMode)?;
+
+        Ok(Self { bit_depth, convert_mode, redraw })
+    }
+}
 
 impl From<PixelHints> for u8 {
     fn from(value: PixelHints) -> Self {
@@ -114,6 +145,77 @@ impl crate::dbus::Property for KGParam<PixelHints> {
         self.write(hint).map_err(dbus::MethodErr::from)?;
 
         Ok(cl)
+    }
+}
+
+enum RectError {
+    BadPos,
+    BadHeight,
+    BadWidth
+}
+
+impl Display for RectError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Self::BadPos => write!(f, "Bad position"),
+            Self::BadHeight => write!(f, "Bad height"),
+            Self::BadWidth => write!(f, "Bad width")
+        }
+    }
+}
+
+// Move this to HW support module
+struct ScreenRect {
+    x: i32,
+    y: i32,
+    width: i32,
+    height: i32,
+}
+
+impl ScreenRect {
+    pub fn try_from_part(x: i32, y: i32, width: i32, height: i32) -> Result<Self, RectError> {
+        let scr_width = SCREEN_WIDTH as i32;
+        let scr_height = SCREEN_HEIGHT as i32;
+        if x < 0 || x > scr_width || y < 0 || y > scr_height {
+            Err(RectError::BadPos)
+        } else if width < 0 || width > scr_width || width < x {
+            Err(RectError::BadWidth)
+        } else if height < 0 || height > scr_height || height < y {
+            Err(RectError::BadHeight)
+        } else {
+            Ok(Self { x, y, width, height })
+        }
+    }
+}
+
+impl Into<rockchip_ebc::DrmRect> for ScreenRect {
+    fn into(self) -> rockchip_ebc::DrmRect {
+        rockchip_ebc::DrmRect {
+            x1: self.x,
+            y1: self.y,
+            x2: self.width,
+            y2: self.height
+        }
+    }
+}
+
+struct RectHint {
+    hints: PixelHints,
+    rect: ScreenRect,
+}
+
+impl RectHint {
+    pub fn new(hints: PixelHints, rect: ScreenRect) -> Self {
+        Self { hints, rect }
+    }
+}
+
+impl Into<rockchip_ebc::RectHint> for RectHint {
+    fn into(self) -> rockchip_ebc::RectHint {
+        rockchip_ebc::RectHint {
+            hints: self.hints.into(),
+            rect: self.rect.into()
+        }
     }
 }
 
@@ -225,6 +327,11 @@ impl EbcState {
         builder.method("RefreshScreen",
             (), (), |ctx, s, ()| s.refresh_screen(ctx)
         );
+
+        builder.method("SetHints",
+            ( "set_default", "hints"), (), | ctx, s, (default, hints) |
+            s.set_hints(ctx, default, hints)
+        );
     }
 
     pub fn refresh_screen(&self, _ctx: &mut Context) -> Result<(), MethodErr> {
@@ -237,5 +344,51 @@ impl EbcState {
                 Err(MethodErr::failed("Internal Error"))
             }
         }
+    }
+
+    fn do_set_default_hint(&self, hints: rockchip_ebc::RectHints) -> Result<(), MethodErr> {
+        match self.ebc_ioctl.set_hints(hints) {
+            Err(e) => {
+                eprintln!("{e}");
+                Err(MethodErr::failed("Internal Error"))
+            },
+            _ => Ok(())
+        }
+    }
+
+    pub fn set_hints(&self, _ctx: &mut Context, default: bool, hints: Vec<((u8, u8, bool), (i32, i32, i32, i32))>) -> Result<(), MethodErr> {
+        let hints: Vec<rockchip_ebc::RectHint> = hints.into_iter()
+            .enumerate()
+            .map(|(i, ((depth, convert, redraw), (x, y, width, height)))| {
+            let hint = PixelHints::try_from_part(depth, convert, redraw)
+                .map_err(|e| {
+                    dbus::MethodErr::invalid_arg(&format!("Rect {i}: {e}"))
+                })?;
+            let r = ScreenRect::try_from_part(x, y, width, height)
+                .map_err(|e| {
+                    dbus::MethodErr::invalid_arg(&format!("Rect {i}: Bad rectangle({x}, {y}, {width} {height}): {e}"))
+                })?;
+
+            Ok(RectHint::new(hint, r).into())
+        }).collect::<Result<Vec<_>, MethodErr>>()?;
+
+        let hints = rockchip_ebc::RectHints {
+            set_default_hints: default,
+            rect_hints: hints
+        };
+
+        self.do_set_default_hint(hints)
+    }
+
+    pub fn set_default_hints(&mut self, ctx: &mut Context, hints: (u8, u8, bool)) -> Result<(), MethodErr> {
+        self.default_hint.setter(ctx, hints)?;
+
+        let hints = rockchip_ebc::RectHints {
+            set_default_hints: true,
+            rect_hints: Vec::new()
+        };
+
+
+        self.do_set_default_hint(hints)
     }
 }
