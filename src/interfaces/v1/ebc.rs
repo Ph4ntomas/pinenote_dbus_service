@@ -4,8 +4,7 @@ use dbus_crossroads::{Context, IfaceBuilder};
 use crate::{dbus::PropertyMethodOps, kernel::{
     self, ioctl::IoctlError,
     module::rockchip_ebc::{
-        DitheringMethod, PixelHintsError,
-        RectHint, RectHints, ScreenRect},
+        DClockSelect, DitheringMethod, PixelHintsError, RectHint, RectHints, ScreenRect},
 }, sys::{self, Module, ModuleParam }};
 
 
@@ -41,17 +40,22 @@ impl crate::dbus::Property for KGParam<PixelHints> {
 }
 
 pub struct EbcState {
-    default_hint: PWrap<KGParam<PixelHints>>,
-    //direct_mode:
+    // No Setter
     bw_threshold: PWrap<KPParam<i32>>,
-    delay_a: PWrap<KPParam<i32>>,
+    dclk_select: PWrap<KEParam<DClockSelect>>,
+    default_hint: PWrap<KGParam<PixelHints>>,
+    // No Setter
     dithering_method: PWrap<KEParam<DitheringMethod>>,
     early_cancellation_addition: PWrap<KPParam<i32>>,
+    hskew_override: PWrap<KPParam<i32>>,
     limit_fb_blit: PWrap<KPParam<i32>>,
     no_off_screen: PWrap<KBParam>,
     redraw_delay: PWrap<KPParam<i32>>,
     refresh_thread_wait_idle: PWrap<KPParam<i32>>,
     shrink_vwindow: PWrap<KBParam>,
+    temp_override: PWrap<KPParam<i32>>,
+    y2_dt_thresholds: PWrap<KPParam<i32>>,
+    y2_th_thresholds: PWrap<KPParam<i32>>,
 
     ebc_ioctl: kernel::ioctl::RockchipEbc,
 }
@@ -66,7 +70,13 @@ impl EbcState {
                 module.primitive_parameter("bw_threshold"),
                 "BwThreshold",
                 true,
-                MOps::Disabled, MOps::Enabled("threshold")
+                MOps::Disabled, MOps::Disabled
+            ),
+            dclk_select: PWrap::new(
+                module.enum_parameter("dclk_select"),
+                "DClockSelect",
+                true,
+                MOps::Disabled, MOps::Enabled("dclk_select")
             ),
             default_hint: PWrap::new(
                 module.generic_parameter("default_hint"),
@@ -74,18 +84,12 @@ impl EbcState {
                 true,
                 MOps::Disabled, MOps::Disabled
             ),
-            delay_a: PWrap::new(
-                module.primitive_parameter("delay_a"),
-                "DelayA",
-                true,
-                MOps::Disabled, MOps::Enabled("threshold")
-            ),
             //direct_mode:
             dithering_method: PWrap::new(
                 module.enum_parameter("dithering_method"),
                 "DitheringMethod",
                 true,
-                MOps::Disabled, MOps::Enabled("method")
+                MOps::Disabled, MOps::Disabled
             ),
             early_cancellation_addition: PWrap::new(
                 module.primitive_parameter("early_cancellation_addition"),
@@ -93,6 +97,11 @@ impl EbcState {
                 true,
                 MOps::Disabled,
                 MOps::Enabled("num_frames")
+            ),
+            hskew_override: PWrap::new(
+                module.primitive_parameter("hskew_override"),
+                "HSkewOverride", true,
+                MOps::Disabled, MOps::Enabled("hskew_override")
             ),
             limit_fb_blit: PWrap::new(
                 module.primitive_parameter("limit_fb_blits"),
@@ -123,22 +132,40 @@ impl EbcState {
                 "ShrinkVirtualWindow", true,
                 MOps::Disabled, MOps::Enabled("shrink_virtual_window")
             ),
-
+            temp_override: PWrap::new(
+                module.primitive_parameter("temp_override"),
+                "TempOverride", true,
+                MOps::Disabled, MOps::Enabled("override")
+            ),
+            y2_dt_thresholds: PWrap::new(
+                module.primitive_parameter("y2_dt_thresholds"),
+                "Y2DitherThresholds", true,
+                MOps::Disabled, MOps::Enabled("thresholds")
+            ),
+            y2_th_thresholds: PWrap::new(
+                module.primitive_parameter("y2_th_thresholds"),
+                "Y2Thresholds", true,
+                MOps::Disabled, MOps::Enabled("thresholds")
+            ),
             ebc_ioctl: Default::default(),
         }
     }
 
     pub fn build(&mut self, builder: &mut IfaceBuilder<Self>) {
         self.bw_threshold.build(builder, |s| &mut s.bw_threshold);
+        self.dclk_select.build(builder, |s| &mut s.dclk_select);
         self.default_hint.build(builder, |s| &mut s.default_hint);
-        self.delay_a.build(builder, |s| &mut s.delay_a);
         self.dithering_method.build(builder, |s| &mut s.dithering_method);
         self.early_cancellation_addition.build(builder, |s| &mut s.early_cancellation_addition);
+        self.hskew_override.build(builder, |s| &mut s.hskew_override);
         self.limit_fb_blit.build(builder, |s| &mut s.limit_fb_blit);
         self.no_off_screen.build(builder, |s| &mut s.no_off_screen);
         self.redraw_delay.build(builder, |s| &mut s.redraw_delay);
         self.refresh_thread_wait_idle.build(builder, |s| &mut s.refresh_thread_wait_idle);
         self.shrink_vwindow.build(builder, |s| &mut s.shrink_vwindow);
+        self.temp_override.build(builder, |s| &mut s.temp_override);
+        self.y2_dt_thresholds.build(builder, |s| &mut s.y2_dt_thresholds);
+        self.y2_th_thresholds.build(builder, |s| &mut s.y2_th_thresholds);
 
         builder.method("SetDefaultHints",
             ( "bit_depth", "convert_mode", "redraw" ), (),

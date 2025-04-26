@@ -18,6 +18,14 @@ pub const FRAMEBUFFER_SZ_4BPP: usize = SCREEN_WIDTH * SCREEN_HEIGHT / 2;
 pub const PIXEL_NUM: usize = SCREEN_WIDTH * SCREEN_WIDTH;
 
 #[derive(TryFromPrimitive, IntoPrimitive, Clone)]
+#[repr(i32)]
+pub enum DClockSelect {
+    Auto = -1,
+    MHz200 = 0,
+    MHz250 = 1,
+}
+
+#[derive(TryFromPrimitive, IntoPrimitive, Clone)]
 #[repr(u8)]
 pub enum DitheringMethod {
     Bayer = 0,
