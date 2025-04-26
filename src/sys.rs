@@ -11,11 +11,30 @@ pub enum Error {
     ConvertError
 }
 
+///
+/// SysFS Module representation
+///
+/// This class is meant to build a quick binding to the sysFS representation of
+/// a kernel module. The *_parameter method allows to instantiate a type-safe
+/// representation of a given parameter.
+///
+/// # Example
+/// ```rust
+/// let foo = Module::new("foo");
+/// let bar = foo.primitive_parameter("bar")
+///
+/// // read /sys/module/foo/parameters/bar
+/// let value = bar.read();
+/// // write /sys/module/foo/parameters/bar
+/// bar.write(value + 1);
+/// ```
+///
 pub struct Module {
     name: String
 }
 
 impl Module {
+    /// Create a new Module which reside at `/sys/module/{name}`
     pub fn new(name: impl Into<String>) -> Self {
         let name = name.into();
         Self {
@@ -50,6 +69,10 @@ impl Module {
     }
 }
 
+///
+/// Common part for every module parameters.
+///
+#[doc(hidden)]
 struct ParameterCommon {
     module: String,
     parameter: String,
@@ -57,6 +80,11 @@ struct ParameterCommon {
 }
 
 impl ParameterCommon {
+    ///
+    /// Initialize a new `ParameterCommon` structure.
+    ///
+    /// The parameter will have its path set to `/sys/module/{name}/parameters/{parameter}`
+    ///
     fn new(module: impl Into<String>, parameter: impl Into<String>) -> Self {
         let module = module.into();
         let parameter = parameter.into();
@@ -69,20 +97,50 @@ impl ParameterCommon {
         }
     }
 
+    /// Access the module name
     fn module(&self) -> &str { &self.module }
+    /// Access the parameter name
     fn parameter(&self) -> &str { &self.parameter }
+    /// Access the parameter path
     fn path(&self) -> &str { &self.path }
 }
 
+///
+/// Convert a parameter from its kernel representation.
+///
+/// `TryFromKernelParam`'s [`try_from_kernel`] is used implicitely in [ModuleParam]'s
+/// blanket implementation for [GenericParameter].
+///
+/// [`try_from_kernel`]: TryFromKernelParam::try_from_kernel
+///
 pub trait TryFromKernelParam
 where Self: Sized
 {
+    /// The associated kernel representation.
     type KRepr;
+    /// The associated error which can be returned from parsing.
     type Error;
 
+    /// Parses a value to a return value of this type.
+    ///
+    /// If parsing succeeds, return the value inside [`Ok`], otherwise when the
+    /// conversion failed, return an error specific to the type, inside [`Err`].
+    /// The error type is specific to the implementation of the trait.
+    ///
+    /// # Examples
+    ///
+    /// TODO: Add example
     fn try_from_kernel(value: Self::KRepr) -> Result<Self, Self::Error>;
 }
 
+/// Parameter whose internal representation is a primitive type.
+///
+/// This type is used to access parameter whose value doesn't have any special
+/// Rust representation, and that can be easily parsed via the [FromStr] traits.
+///
+/// Note, since boolean values can sometime be represented by Y or N, it's better
+/// to use [BoolParameter].
+///
 pub struct PrimitiveParameter<Repr> {
     common: ParameterCommon,
     phantom: PhantomData<Repr>
@@ -103,6 +161,12 @@ impl<Repr> PrimitiveParameter<Repr> {
     pub fn path(&self) -> &str { self.common.path() }
 }
 
+/// Parameter whose internal representation is a boolean.
+///
+/// `BoolParameter` are used to binds to boolean module parameter.
+/// This specialization is needed since some module uses "Y" or "N" to represent
+/// booleans, which makes FromStr::from_str return an error.
+///
 pub struct BoolParameter {
     common: ParameterCommon,
 }
@@ -119,6 +183,7 @@ impl BoolParameter {
     pub fn path(&self) -> &str { self.common.path() }
 }
 
+/// Parameter whose rust representation is an enumeration implementing [`num_enum::TryFromPrimitive`]
 pub struct EnumParameter<Enum> where
 Enum: TryFromPrimitive + Into<Enum::Primitive>
 {
@@ -144,6 +209,7 @@ Enum::Primitive: FromStr + Display
     pub fn path(&self) -> &str { self.common.path() }
 }
 
+/// Parameter with arbitrary rust representation.
 pub struct GenericParameter<Type> where
 Type: TryFromKernelParam + Into<Type::KRepr>
 {
@@ -169,12 +235,25 @@ Type::KRepr: FromStr + Display
     pub fn path(&self) -> &str { self.common.path() }
 }
 
-pub trait ModuleParamBase {
-    fn get_path(&self) -> String;
+/// Common trait for module parameters.
+///
+/// Implementation must provide a [`get_path`] function, that returns the path to
+/// the parameter file in SysFS, as well as a [`read`] and [`write`] function
+///
+/// [`get_path`]: ModuleParam<T>::read
+/// [`read`]: ModuleParam<T>::read
+/// [`write`]: ModuleParam<T>::write
+///
+pub trait ModuleParam<T> {
+    type Repr;
 
+    /// Returns the path to the file to read or write.
+    fn get_path(&self) -> &str;
+
+    /// Read from the parameter file and returns a String.
     fn read_raw(&self) -> Result<String, Error> {
         let path = self.get_path();
-        let file_result = OpenOptions::new().read(true).open(&path);
+        let file_result = OpenOptions::new().read(true).open(path);
 
         match file_result {
             Ok(file) => {
@@ -195,52 +274,20 @@ pub trait ModuleParamBase {
         }
     }
 
-    fn write_raw(&self, value: String) -> Result<(), Error> {
+    /// Write a string to the parameter file.
+    fn write_raw(&self, value: impl Into<String>) -> Result<(), Error> {
         let path = self.get_path();
-        eprintln!("Writing to {}: {}", path, value);
 
         OpenOptions::new()
             .write(true)
-            .open(&path)
-            .and_then(|mut f| { write!(f, "{}", value) })
+            .open(path)
+            .and_then(|mut f| { write!(f, "{}", value.into()) })
             .map_err(Error::IoError)
     }
-}
 
-impl<T> ModuleParamBase for PrimitiveParameter<T> {
-    fn get_path(&self) -> String {
-        self.path().to_string()
-    }
-}
-
-impl<T> ModuleParamBase for EnumParameter<T> where
-    T: TryFromPrimitive + Into<T::Primitive>,
-    T::Primitive: FromStr + Display
-{
-    fn get_path(&self) -> String {
-        self.path().to_string()
-    }
-}
-
-impl<T> ModuleParamBase for GenericParameter<T> where
-    T: TryFromKernelParam + Into<T::KRepr>,
-    T::KRepr: FromStr + Display
-{
-    fn get_path(&self) -> String {
-        self.path().to_string()
-    }
-}
-
-impl ModuleParamBase for BoolParameter {
-    fn get_path(&self) -> String {
-        self.path().to_string()
-    }
-}
-
-pub trait ModuleParam<T> : ModuleParamBase {
-    type Repr;
-
+    /// Read from the parameter file and returns a parsed value.
     fn read(&self) -> Result<T, Error>;
+    /// Convert the value to a string, and write it to the file.
     fn write(&self, value: T) -> Result<(), Error>;
 }
 
@@ -248,6 +295,10 @@ impl<T> ModuleParam<T> for PrimitiveParameter<T> where
 T: FromStr + Display
 {
     type Repr = T;
+
+    fn get_path(&self) -> &str {
+        self.path()
+    }
 
     fn read(&self) -> Result<T, Error> {
         self.read_raw()
@@ -265,6 +316,10 @@ T: TryFromPrimitive + Into<T::Primitive>,
 T::Primitive: FromStr + Display
 {
     type Repr = T::Primitive;
+
+    fn get_path(&self) -> &str{
+        self.path()
+    }
 
     fn read(&self) -> Result<T, Error> {
         self.read_raw()
@@ -285,6 +340,10 @@ T::KRepr: FromStr + Display
 {
     type Repr = T::KRepr;
 
+    fn get_path(&self) -> &str {
+        self.path()
+    }
+
     fn read(&self) -> Result<T, Error> {
         self.read_raw()
             .and_then(|v| v.parse::<Self::Repr>().map_err(|_| Error::ParseError ))
@@ -300,6 +359,10 @@ T::KRepr: FromStr + Display
 
 impl ModuleParam<bool> for BoolParameter {
     type Repr = bool;
+
+    fn get_path(&self) -> &str {
+        self.path()
+    }
 
     fn read(&self) -> Result<bool, Error> {
         let repr = self.read_raw()?;
