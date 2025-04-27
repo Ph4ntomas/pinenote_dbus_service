@@ -74,18 +74,23 @@ impl PixelHints {
     const REDRAW_SHIFT : u8 = 7;
     const REDRAW_MASK : u8 = 1 << Self::REDRAW_SHIFT;
 
+    pub fn new(bit_depth: HintBitDepth, convert_mode: HintConvertMode, redraw: bool) -> Self {
+        let bit_depth = (bit_depth as u8) << Self::BIT_DEPTH_SHIFT;
+        let convert_mode = (convert_mode as u8) << Self::CONVERT_SHIFT;
+        let redraw = (redraw as u8) << Self::REDRAW_SHIFT;
+
+        Self {
+            repr: bit_depth | convert_mode | redraw
+        }
+    }
+
     pub fn try_from_part(depth: u8, convert_mode: u8, redraw: bool) -> Result<Self, PixelHintsError> {
         let bit_depth = HintBitDepth::try_from_primitive(depth)
             .map_err(|_| PixelHintsError::BadBitDepth)?;
         let convert_mode = HintConvertMode::try_from_primitive(convert_mode)
             .map_err(|_| PixelHintsError::BadConvertMode)?;
 
-        let bit_depth = (bit_depth as u8) << Self::BIT_DEPTH_SHIFT;
-        let convert_mode = (convert_mode as u8) << Self::CONVERT_SHIFT;
-        let redraw = (redraw as u8) << Self::REDRAW_SHIFT;
-
-        let repr = bit_depth | convert_mode | redraw;
-        Ok(Self { repr })
+        Ok(Self::new(bit_depth, convert_mode, redraw))
     }
 
     fn extract_bit_depth(repr: u8) -> u8 {
