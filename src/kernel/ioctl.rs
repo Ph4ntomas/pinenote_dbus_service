@@ -67,6 +67,14 @@ impl RockchipEbc {
     pub fn set_hints(&self, rect_hints: RectHints) -> Result<(), IoctlError> {
         let file = open_device(Self::DEVICE)?;
 
+        if let Some(hints) = &rect_hints.default_hints {
+            eprintln!("set_hints: Setting default hint with {hints:#04}");
+        }
+
+        eprintln!("set_hints: Pushing the following {{");
+        rect_hints.rect_hints.iter().for_each(|rh| eprintln!("{{ {}, ({}, {}, {}. {}) }},", rh.hints,
+                rh.rect.x1, rh.rect.y1, rh.rect.x2, rh.rect.y2));
+
         unsafe {
             rect_hints.set_rect_hints(file.as_raw_fd())?
         }
