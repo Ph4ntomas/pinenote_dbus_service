@@ -21,6 +21,9 @@ name = "pn_enter_writing_mode"
 [[bin]]
 name = "pn_quit_writing_mode"
 
+[[bin]]
+name = "test_rect_old"
+
 [dependencies]
 # cargo-deb = "2.1.0"
 dbus = ">=0.9.6"
