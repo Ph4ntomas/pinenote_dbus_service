@@ -13,9 +13,7 @@ use crate::{
 pub const SCREEN_HEIGHT: usize = 1404;
 pub const SCREEN_WIDTH: usize = 1872;
 pub const FRAMEBUFFER_SZ_4BPP: usize = SCREEN_WIDTH * SCREEN_HEIGHT / 2;
-// FIXME: The current driver has a bug and do not use the height to compute the number of
-// pixels.
-pub const PIXEL_NUM: usize = SCREEN_WIDTH * SCREEN_WIDTH;
+pub const PIXEL_NUM: usize = SCREEN_WIDTH * SCREEN_HEIGHT;
 
 #[derive(TryFromPrimitive, IntoPrimitive, Clone)]
 #[repr(i32)]
@@ -208,21 +206,29 @@ impl From<RectHint> for uapi::rockchip_ebc::RectHint {
     fn from(value: RectHint) -> Self {
         Self {
             hints: value.hints.into(),
+            padding: Default::default(),
             rect: value.rect.into()
         }
     }
 }
 
 pub struct RectHints {
-    set_default: bool,
+    default_hints: Option<PixelHints>,
     rect_hints: Vec<RectHint>
 }
 
 impl RectHints {
-    pub fn new(set_default: bool, rect_hints: Vec<RectHint>) -> Self {
+    pub fn new(rect_hints: Vec<RectHint>) -> Self {
         Self {
-            set_default,
+            default_hints: None,
             rect_hints
+        }
+    }
+
+    pub fn new_with_default(default_hints: PixelHints, rect_hints: Vec<RectHint>) -> Self {
+        Self {
+            default_hints: Some(default_hints),
+            rect_hints,
         }
     }
 }
@@ -230,7 +236,7 @@ impl RectHints {
 impl From<RectHints> for drm::RectHints {
     fn from(value: RectHints) -> Self {
         drm::RectHints {
-            set_default_hints: value.set_default,
+            default_hints: value.default_hints.map(PixelHints::into),
             rect_hints: value.rect_hints.into_iter().map(|r| r.into()).collect()
         }
     }

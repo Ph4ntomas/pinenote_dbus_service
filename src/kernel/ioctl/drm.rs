@@ -119,13 +119,11 @@ pub mod rockchip_ebc {
     }
 
     pub struct RectHints {
-        pub set_default_hints: bool,
+        pub default_hints: Option<u8>,
         pub rect_hints: Vec<details::RectHint>
     }
 
     impl RectHints {
-        const MAX_RECT: usize = details::RectHints::MAX_RECT;
-
         ///
         /// Set hints for the screen regions
         ///
@@ -133,16 +131,12 @@ pub mod rockchip_ebc {
         /// raw_fd must be an open fd to the rockchip_ebc character device.
         ///
         pub unsafe fn set_rect_hints(self, raw_fd: std::os::fd::RawFd) -> Result<(), nix::errno::Errno> {
-            let mut rect_hints: [details::RectHint; Self::MAX_RECT] = Default::default();
-
-            for (i, hint) in self.rect_hints.iter().enumerate().take(20) {
-                rect_hints[i] = hint.clone()
-            }
-
             let mut payload = details::RectHints {
-                num_rects: usize::min(Self::MAX_RECT, self.rect_hints.len()) as u32,
-                set_default_hints: self.set_default_hints,
-                rect_hints,
+                set_default_hints: self.default_hints.is_some() as u8,
+                default_hints: self.default_hints.unwrap_or_default(),
+                padding: Default::default(),
+                num_rects: self.rect_hints.len() as u32,
+                rect_hints: self.rect_hints.as_ptr(),
             };
 
             details::rect_hints_iowr(raw_fd, &mut payload)?;

@@ -34,18 +34,17 @@ pub mod rockchip_ebc {
     #[repr(C)]
     pub struct RectHint {
         pub hints: u8,
+        pub padding: [u8; 7],
         pub rect: super::Rect,
     }
 
     #[repr(C)]
     pub struct RectHints {
-        pub num_rects: u32, // 20 MAX
-        pub set_default_hints: bool,
-        pub rect_hints: [RectHint; Self::MAX_RECT]
-    }
-
-    impl RectHints {
-        pub const MAX_RECT: usize = 20;
+        pub set_default_hints: u8,
+        pub default_hints: u8,
+        pub padding: [u8; 2],
+        pub num_rects: u32,
+        pub rect_hints: *const RectHint
     }
 
     #[repr(C)]

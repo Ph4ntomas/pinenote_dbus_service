@@ -177,8 +177,8 @@ impl EbcState {
         );
 
         builder.method("SetHints",
-            ( "set_default", "hints"), (), | ctx, s, (default, hints) |
-            s.set_hints(ctx, default, hints)
+            ( "hints", ), (), | ctx, s, (hints, ) |
+            s.set_hints(ctx, hints)
         );
 
         builder.method("SetFastMode",
@@ -214,7 +214,7 @@ impl EbcState {
     }
 
     #[allow(clippy::type_complexity)]
-    pub fn set_hints(&self, _ctx: &mut Context, default: bool, hints: Vec<((u8, u8, bool), (i32, i32, i32, i32))>) -> Result<(), MethodErr> {
+    pub fn set_hints(&self, _ctx: &mut Context, hints: Vec<((u8, u8, bool), (i32, i32, i32, i32))>) -> Result<(), MethodErr> {
         let hints: Vec<RectHint> = hints.into_iter()
             .enumerate()
             .map(|(i, ((depth, convert, redraw), (x, y, width, height)))| {
@@ -230,17 +230,31 @@ impl EbcState {
             Ok(RectHint::new(hint, r))
         }).collect::<Result<Vec<_>, MethodErr>>()?;
 
-        let hints = RectHints::new(default, hints);
+        let hints = RectHints::new(hints);
 
         self.do_set_default_hint(hints)
     }
 
-    pub fn set_default_hints(&mut self, ctx: &mut Context, hints: (u8, u8, bool)) -> Result<(), MethodErr> {
-        self.default_hint.setter(ctx, hints)?;
+    pub fn set_default_hints(&mut self, ctx: &mut Context, (depth, convert_mode, redraw): (u8, u8, bool)) -> Result<(), MethodErr> {
+        let hint = PixelHints::try_from_part(depth, convert_mode, redraw)
+            .map_err(|e| match e {
+                    PixelHintsError::BadBitDepth => MethodErr::invalid_arg(&format!(
+                        "{depth} is not a valid bit depth."
+                    )),
+                    PixelHintsError::BadConvertMode => MethodErr::invalid_arg(&format!(
+                        "{convert_mode} is not a valid conversion mode.")),
+                })?;
+        let hints = RectHints::new_with_default(hint, Vec::new());
 
-        let hints = RectHints::new(true, Vec::new());
+        self.do_set_default_hint(hints)?;
 
-        self.do_set_default_hint(hints)
+        let v = (depth, convert_mode, redraw);
+        let msgs: Vec<_> = self.default_hint.setter_hooks.iter()
+            .flat_map(|f| f(ctx, &v)).collect();
+
+        msgs.into_iter().for_each(|msg| ctx.push_msg(msg));
+
+        Ok(())
     }
 
     pub fn set_fast_mode(&mut self, _ctx: &mut Context, fast: bool) -> Result<(), MethodErr> {
