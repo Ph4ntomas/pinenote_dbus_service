@@ -1,6 +1,7 @@
 use std::{error::Error, time::Duration};
 use dbus::blocking::Connection;
 
+#[allow(dead_code)]
 mod proxy;
 
 use proxy::service1::OrgPinenoteService1Ebc1;
