@@ -4,7 +4,7 @@ use dbus_crossroads::{Context, IfaceBuilder};
 use crate::{dbus::PropertyMethodOps, kernel::{
     self, ioctl::IoctlError,
     module::rockchip_ebc::{
-        DClockSelect, DitheringMethod, PixelHintsError, RectHint, RectHints, ScreenRect},
+        DClockSelect, DitheringMethod, PixelHintsError, RectHint, RectHints, Rect},
 }, sys::{self, Module, ModuleParam }};
 
 
@@ -217,14 +217,14 @@ impl EbcState {
     pub fn set_hints(&self, _ctx: &mut Context, hints: Vec<((u8, u8, bool), (i32, i32, i32, i32))>) -> Result<(), MethodErr> {
         let hints: Vec<RectHint> = hints.into_iter()
             .enumerate()
-            .map(|(i, ((depth, convert, redraw), (x, y, width, height)))| {
+            .map(|(i, ((depth, convert, redraw), (x1, y1, x2, y2)))| {
             let hint = PixelHints::try_from_part(depth, convert, redraw)
                 .map_err(|e| {
                     dbus::MethodErr::invalid_arg(&format!("Rect {i}: {e}"))
                 })?;
-            let r = ScreenRect::try_from_part(x, y, width, height)
+            let r = Rect::try_from_part(x1, y1, x2, y2)
                 .map_err(|e| {
-                    dbus::MethodErr::invalid_arg(&format!("Rect {i}: Bad rectangle({x}, {y}, {width} {height}): {e}"))
+                    dbus::MethodErr::invalid_arg(&format!("Rect {i}: Bad rectangle({x1}, {y1}, {x2} {y2}): {e}"))
                 })?;
 
             Ok(RectHint::new(hint, r))

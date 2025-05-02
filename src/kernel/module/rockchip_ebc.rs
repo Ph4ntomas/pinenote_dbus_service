@@ -162,47 +162,47 @@ impl Display for RectError {
     }
 }
 
-pub struct ScreenRect {
-    x: i32,
-    y: i32,
-    width: i32,
-    height: i32,
+pub struct Rect {
+    x1: i32,
+    y1: i32,
+    x2: i32,
+    y2: i32,
 }
 
-impl ScreenRect {
-    pub fn try_from_part(x: i32, y: i32, width: i32, height: i32) -> Result<Self, RectError> {
-        let scr_width = SCREEN_WIDTH as i32;
-        let scr_height = SCREEN_HEIGHT as i32;
-        if x < 0 || x > scr_width || y < 0 || y > scr_height {
+impl Rect {
+    pub fn try_from_part(x1: i32, y1: i32, x2: i32, y2: i32) -> Result<Self, RectError> {
+        let max_width = SCREEN_WIDTH as i32;
+        let max_height = SCREEN_HEIGHT as i32;
+        if x1 < 0 || x1 > max_width || y1 < 0 || y1 > max_height {
             Err(RectError::BadPos)
-        } else if width < 0 || width > scr_width || width < x {
+        } else if x2 < 0 || x2 > max_width || x2 < x1 {
             Err(RectError::BadWidth)
-        } else if height < 0 || height > scr_height || height < y {
+        } else if y2 < 0 || y2 > max_height || y2 < y1 {
             Err(RectError::BadHeight)
         } else {
-            Ok(Self { x, y, width, height })
+            Ok(Self { x1, y1, x2, y2 })
         }
     }
 }
 
-impl From<ScreenRect> for uapi::drm::Rect {
-    fn from(value: ScreenRect) -> Self {
+impl From<Rect> for uapi::drm::Rect {
+    fn from(value: Rect) -> Self {
         Self {
-            x1: value.x,
-            y1: value.y,
-            x2: value.width,
-            y2: value.height,
+            x1: value.x1,
+            y1: value.y1,
+            x2: value.x2,
+            y2: value.y2,
         }
     }
 }
 
 pub struct RectHint {
     hints: PixelHints,
-    rect: ScreenRect,
+    rect: Rect,
 }
 
 impl RectHint {
-    pub fn new(hints: PixelHints, rect: ScreenRect) -> Self {
+    pub fn new(hints: PixelHints, rect: Rect) -> Self {
         Self { hints, rect }
     }
 }
